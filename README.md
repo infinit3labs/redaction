@@ -408,66 +408,121 @@ reported as a health disclosure.
 ```console
 $ python examples/evaluate_corpus.py --count 400
 $ python examples/evaluate_corpus.py --count 400 --show-misses --json
+$ python examples/evaluate_corpus.py --count 400 --no-lexicon
 ```
 
 A secret counts as caught when its literal text is *absent* from the redacted
 output, which is stricter than "a finding overlapped it": the standard is what
 a reader of the output can still see.
 
-Current figures over 500 generated records, with public-sector and corporate
+`--no-lexicon` exists because the answer to "does this need a deployment to
+supply its own vocabulary?" should be a measurement rather than an opinion. It
+is not one: recall is identical with and without it, 99.3% either way.
+`TestLexiconIndependence` pins that, because a deployment that has never seen
+this module will not arrive with a list of its own internal project names and
+should not be materially worse off than one that does.
+
+Current figures over 800 generated records, with public-sector and corporate
 vocabulary in the mix:
 
 ```
 kind                    planted  caught   recall
-acn                         111     111   100.0%
-aps_level                    11      11   100.0%
-aps_unit                     10      10   100.0%
-bsb                          57      57   100.0%
-cohort                        5       5   100.0%
-credit_card                 104     104   100.0%
-dob                          90      90   100.0%
-email                       139     139   100.0%
-email_spaced                 17      17   100.0%
-government_act                3       3   100.0%
-medicare                    130     130   100.0%
-organisation                 39      39   100.0%
-phone                       137     137   100.0%
-phone_obfuscated             30      30   100.0%
-public_role                   9       9   100.0%
-seniority_in_unit             9       9   100.0%
-suburb                       16      16   100.0%
-tfn                         133     133   100.0%
-third_party                  25      25   100.0%
-workplace_type                2       2   100.0%
-implication_person           46      43    93.5%
-implication_workplace        31      26    83.9%
-site                         27      21    77.8%
-OVERALL                    1182    1168    98.8%
+acn                         191     191   100.0%
+aps_level                    20      20   100.0%
+aps_unit                     17      17   100.0%
+bsb                          98      98   100.0%
+credit_card                 192     192   100.0%
+dob                         145     145   100.0%
+email                       217     217   100.0%
+email_spaced                 44      44   100.0%
+government_act               13      13   100.0%
+medicare                    185     185   100.0%
+organisation                 79      79   100.0%
+phone                       213     213   100.0%
+phone_obfuscated             44      44   100.0%
+public_role                  16      16   100.0%
+seniority_in_unit            13      13   100.0%
+suburb                       22      22   100.0%
+tfn                         221     221   100.0%
+third_party                  35      35   100.0%
+workplace_type                5       5   100.0%
+implication_person           56      55    98.2%
+implication_workplace        40      35    87.5%
+site                         58      52    89.7%
+OVERALL                    1934    1921    99.3%
 ```
 
 Split by how the value was written, which is the more informative cut:
 
 | form | planted | recall |
 | --- | --- | --- |
-| clean | 1068 | **100.0%** |
-| fullwidth | 40 | **100.0%** |
-| leet | 11 | **100.0%** |
-| lower | 9 | **100.0%** |
-| spaced | 19 | 89.5% |
-| misspelled | 35 | 65.7% |
+| clean | 1744 | **100.0%** |
+| fullwidth | 58 | **100.0%** |
+| leet | 12 | **100.0%** |
+| lower | 18 | **100.0%** |
+| spaced | 49 | 91.8% |
+| misspelled | 53 | 83.0% |
 
-Read that honestly: **every well-formed value is caught, and the two shortfalls
-are a ceiling rather than a defect.** The sequence rules and the site rules are
-exact patterns, so a misspelled idiom ("since the atke-over") or a
-character-spaced phrase ("t h e   o n l y") cannot match them. Closing that gap
-means fuzzy matching over multi-word idioms, which trades a large
-false-positive surface for the margin — a bad trade when a false positive means
-a support manager's name is deleted from a bullying complaint.
+**Every well-formed value is caught.** The two shortfalls were both closed-vocabulary
+typos, and both are now handled. The site and role vocabularies and the work-event
+idioms match within one edit — an extra letter, a missing letter, a substitution or
+a transposition — so `warrehouse`, `storre`, `stoke` and `takc-over` are caught
+instead of being reported clean. Misspelled recall went from **66.0% to 83.0%**,
+overall from 98.9% to 99.3%, and over-redaction stayed at zero throughout: all
+1693 `must_survive` fragments across 1500 generated records still pass through
+byte for byte.
+
+That trade is only worth making because the site rules are already anchored by a
+capitalised name and a placement cue. Fuzzy matching applied to an unanchored rule
+would be a bad deal, because a false positive there means a support manager's name
+is deleted from a bullying complaint.
 
 Entity-level values do better: the lexicon's SymSpell index absorbs one edit, so
 "timsheet" and "Kestral" match.
 
 ## Sample survey data and the evaluation suite
+
+### Held-out probes: the corpus this repo did not write
+
+The generated corpus above is written by the same people who wrote the
+detectors, so its recall is an **upper bound, not a generalisation estimate**.
+`data/heldout_probes.ndjson` exists to break that circle. It holds 50 free-text
+answers built from wording that came from somewhere else:
+
+* the model Code of Practice, including its own list of how workers describe exposure
+* the WorkSafe Victoria psychosocial hazard identification screener
+* the People at Work validated role-clarity and support items
+* the 2026 Australian Worker Exposure Survey statement set
+* the National Return to Work Survey themes
+
+`tests/test_heldout_probes.py` measures recall against it and asserts that
+nothing in it shares a long literal with the generator's vocabularies. That last
+assertion is the point: a held-out set that quietly borrows a phrase stops being
+held out, and this is how that would be caught.
+
+It earned its place immediately. Its first run found **four defects the
+generated corpus could not**, three of them on regulator-published wording:
+
+| Text | What happened |
+| --- | --- |
+| "I am clear on what my responsibilities are" | `I am [HEALTH DETAIL] on what my responsibilities are` |
+| "I have support to work safely" | `I have [HEALTH DETAIL] to work safely` |
+| "I am torn between two competing priorities" | `I am [HEALTH DETAIL] two competing priorities` |
+| "the Main branch" | Read as a named site rather than an attributive adjective |
+
+The first two are the two most common protective items in the national data, and
+the third is the Code of Practice's own description of role conflict. All three
+are now fixed. The health cue is `I am`/`I have` plus a denylist, and `clear`,
+`torn`, `support` and `confused` joined it — but note what that keeps saying:
+**the denylist is a blunt instrument and it keeps needing extending.** It is
+worth replacing with something structural rather than growing, and that is a
+change with its own regression surface, so it has not been attempted here.
+
+The held-out set now reports 26 of 26 planted secrets caught, with zero
+over-redaction. `evaluate_corpus.py` cannot measure this set; the test is the
+only thing that runs it.
+
+### The survey fixture
 
 `data/survey_responses.ndjson` is 58 Qualtrics-shaped records from a workplace
 health cover provider: `Q1` asks how the service they received was, `Q2` what to
@@ -684,6 +739,38 @@ expected_matches = population / (selectivity_1 * selectivity_2 * ...)
 Below `min_cohort`, the record is identifying even though no rule fired. The
 three actions are `PASS`, `GENERALISE` (replace the residual literals, keep the
 narrative) and `SUPPRESS` (withhold, for risk that cannot be redacted away).
+
+### It is not enabled on the survey fixture, and that is a finding
+
+`--population` is wired into `examples/run_survey_suite.py` and **reports by
+default without changing the output**; `--residual-apply` turns it on for real.
+
+```console
+$ python examples/run_survey_suite.py --population 1200
+```
+
+The report-only default exists because residual control, as currently
+calibrated, **fights the survey signal the detectors deliberately preserve**:
+
+| population | fields changed | suppressed | manifest expectations broken |
+| --- | --- | --- | --- |
+| 500 | 20 | 11 | 25 |
+| 1,000 | 12 | 3 | 13 |
+| 5,000 | 10 | 1 | 12 |
+| 100,000 | 6 | 0 | 6 |
+
+Raising the population does not tune it away. At every figure it wants to
+generalise `CLM-2026-8812`, `5300000100`, `Clerical Award`, `Human Resources`,
+`account 12345678` and `Surry Hills` — values the manifest pins as *must
+survive*, because removing the claim reference or the account number destroys
+the payment evidence without reducing risk, and removing `Surry Hills` changes
+nothing about who wrote the record.
+
+So the selectivity estimates in `SELECTIVITY` are calibrated for a population
+this fixture is not drawn from, and the arithmetic is being applied to values
+that are already masked or already coarse. Turning this on as a default would
+have looked like a win and quietly gutted the corpus. Calibrating it needs real
+review outcomes, which is the next section's point, not something to guess at.
 
 What it catches that the detectors do not:
 

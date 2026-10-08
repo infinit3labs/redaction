@@ -250,6 +250,14 @@ _NOT_HEALTH = frozenset(
         "last", "next", "past", "recent", "recently", "lastly", "finally",
         "who", "what", "when", "where", "why", "how", "which", "with", "from",
         "this", "that", "these", "those", "have", "has", "had",
+        # Adjectives that follow the cue without naming a condition. Every one
+        # of these was caught redacting a validated survey item or the model
+        # Code's own description of how workers talk: "I am clear on what my
+        # responsibilities are" (People at Work role clarity), "I have support
+        # to work safely" (People at Work support), "I am torn between two
+        # competing priorities" and "I am confused about what my role involves"
+        # (Code of Practice, role clarity and role conflict).
+        "clear", "torn", "support", "confused", "lucky", "grateful",
     }
 )
 

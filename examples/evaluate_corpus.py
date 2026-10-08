@@ -6,10 +6,17 @@ module: not how many findings it produced, but how many known secrets escaped.
 
     python examples/evaluate_corpus.py --count 400
     python examples/evaluate_corpus.py --count 400 --show-misses
+    python examples/evaluate_corpus.py --count 400 --no-lexicon
 
 A secret counts as caught when its literal text is absent from the redacted
 output. That is deliberately stricter than "a finding overlapped it": the
 standard is what a reader of the output can still see.
+
+``--no-lexicon`` exists because the answer to "does this need a deployment to
+supply its own vocabulary?" is a measurement rather than an opinion. The seed
+lexicon is Australian WHS and public-sector vocabulary; a deployment that
+supplies nothing should not be materially worse off, and this flag is how that
+claim gets checked instead of assumed.
 """
 
 from __future__ import annotations
@@ -159,12 +166,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=20260308)
     parser.add_argument("--injection-rate", type=float, default=0.85)
     parser.add_argument("--show-misses", type=int, default=15)
+    parser.add_argument(
+        "--no-lexicon",
+        action="store_true",
+        help="use only the bundled seed lexicon, with no internal terms",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
     generator = SurveyGenerator(seed=args.seed, injection_rate=args.injection_rate)
     records = generator.corpus(args.count)
-    spec = RedactorSpec.build(salt=DEMO_SALT, lexicon=DEMO_LEXICON)
+    lexicon = None if args.no_lexicon else DEMO_LEXICON
+    spec = RedactorSpec.build(salt=DEMO_SALT, lexicon=lexicon)
     outcome = evaluate(records, spec, show_misses=args.show_misses)
 
     if args.json:

@@ -57,6 +57,35 @@ from ..vocabulary import (
     alt,
 )
 
+
+def _typo(word: str) -> str:
+    """A regex fragment matching ``word`` within one edit.
+
+    Real respondents misspell closed vocabulary constantly -- "warrehouse",
+    "storre", "stoke" -- and a rule that requires the exact spelling reports a
+    named site as clean. One edit is the right budget: it covers the four typos
+    people actually make (an extra letter, a missing letter, a substitution and
+    a transposition) without opening the rule to anything further out.
+
+    Every direction is generated, not just deletion. "warrehouse" is an
+    insertion into "warehouse" and no deletion of the correct word produces it,
+    so a deletion-only neighbourhood would have missed exactly the case that
+    prompted this.
+
+    Substitution and insertion are restricted to ``[a-z]``. Allowing digits or
+    punctuation here would collide with the numeric and identifier rules, which
+    consume the same text and have to keep winning.
+    """
+    alts = {word}
+    for index in range(len(word)):
+        alts.add(word[:index] + word[index + 1 :])             # dropped letter
+        alts.add(word[:index] + "[a-z]" + word[index + 1 :])  # mistyped letter
+        alts.add(word[:index] + "[a-z]" + word[index:])       # doubled letter
+    for index in range(len(word) - 1):
+        alts.add(word[:index] + word[index + 1] + word[index] + word[index + 2 :])
+    return alt(*sorted(alts))
+
+
 # --- Vocabulary the rules share ---------------------------------------------
 _ROSTER = alt(
     "team", "unit", "ward", "crew", "shift", "roster", "rota", "department",
@@ -68,9 +97,11 @@ _SHIFT = alt(
     "daytime", "overnight", "backfill",
 )
 _ROLE = alt(
-    "nurse", "teacher", "carer", "cleaner", "driver", "technician", "officer",
-    "cook", "chef", "barista", "clerk", "labourer", "electrician", "plumber",
-    "warden", "midwife", "allocator", "caseworker", "auditor", "pharmacist",
+    *(_typo(w) if len(w) >= 5 else w for w in (
+        "nurse", "teacher", "carer", "cleaner", "driver", "technician", "officer",
+        "cook", "chef", "barista", "clerk", "labourer", "electrician", "plumber",
+        "warden", "midwife", "allocator", "caseworker", "auditor", "pharmacist",
+    ))
 )
 _AGE_PHASE = alt("youngest", "oldest", "newest", "new", "senior", "junior", "only")
 _SMALL_NUMBER = alt(
@@ -86,9 +117,12 @@ _UNIQUE_KIND = alt(
 _SELF = alt(r"i\s+am", r"i'?m", r"i\s+was", r"being\s+the",
             r"it\s+is\s+that\s+i\s+am", r"i\b")
 _SITE_NOUN = alt(
-    "depot", "store", "site", "branch", "plant", "facility", "terminal",
-    "warehouse", "hub", "campus", "centre", "center", "workshop", "yard",
-    "floor", "building", "lab", "refinery", "kiln", "mine", "exchange",
+    *(word if len(word) < 5 else _typo(word)
+      for word in (
+          "depot", "store", "site", "branch", "plant", "facility", "terminal",
+          "warehouse", "hub", "campus", "centre", "center", "workshop", "yard",
+          "floor", "building", "lab", "refinery", "kiln", "mine", "exchange",
+      ))
 )
 
 #: Blocks the head modifier of a "the <modifier> <unit>" phrase when the
@@ -96,12 +130,19 @@ _SITE_NOUN = alt(
 #: See ``vocabulary.SERVICE_FUNCTION`` for why, and for what this costs.
 _NOT_SERVICE_FUNCTION = rf"(?!(?:{SERVICE_FUNCTION})\b)"
 
-#: Determiners and possessives that capitalise a site *noun* without naming a
-#: site. Without this guard "My site" matched: the capital letter, one word, the
-#: optional middle words backtracking to zero, then "site" as the site noun.
+#: Determiners, possessives and bare adjectives that capitalise a site *noun*
+#: without naming a site. Without this guard "My site" matched: the capital
+#: letter, one word, the optional middle words backtracking to zero, then
+#: "site" as the site noun. The adjectives were added when the held-out probe
+#: set showed "the Main branch" and "the Big store" redacting as named sites.
+#: Directional words are deliberately absent: "North", "South" and "West" are
+#: real Australian place names and a site genuinely called the North depot
+#: would be missed.
 _NOT_A_NAME = alt(
     "My", "The", "Our", "His", "Her", "Its", "This", "That", "A", "An",
     "Their", "Your", "Each", "Every", "New", "Old",
+    "Main", "Big", "Small", "Large", "Central", "Upper", "Lower",
+    "Inner", "Outer", "Front", "Rear",
 )
 #: Workplace events that genuinely narrow the employer and the timeframe.
 #: "restructure", "reorg", "move" and "downgrade" were removed: they are common
@@ -109,9 +150,11 @@ _NOT_A_NAME = alt(
 #: ("after the restructure") without identifying anybody. The ones kept are rare
 #: enough to be recognisable by a colleague.
 _WORK_EVENT = alt(
-    "closure", r"shut\s?down", "merger", "take-?over", "announcement",
-    "inspection", "audit", "investigation", "reopening", "relocation",
-    "sale", "commissioning", "handover", "demolition", "walkout", "lockout",
+    "closure", r"shut\s?down", _typo("merger"), rf"take-?{_typo('over')}",
+    _typo("announcement"), _typo("inspection"), _typo("audit"),
+    _typo("investigation"), _typo("reopening"), _typo("relocation"),
+    "sale", _typo("commissioning"), _typo("handover"), _typo("demolition"),
+    _typo("walkout"), _typo("lockout"),
 )
 #: Deliberately specific. "system", "process", "form" and "report" were tried
 #: and removed: "my report was wrong" appears in almost every response and

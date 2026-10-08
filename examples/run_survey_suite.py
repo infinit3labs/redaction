@@ -17,6 +17,12 @@ Exit status is 1 when anything is missed or leaked, so this doubles as a gate.
     python examples/run_survey_suite.py
     python examples/run_survey_suite.py --show-clean
     python examples/run_survey_suite.py --json
+    python examples/run_survey_suite.py --population 1200
+
+``--population`` supplies the workforce size that residual disclosure control
+needs to mean anything. It reports by default and does not change the output;
+add ``--residual-apply`` to actually run the second pass. See the note below
+for why reporting is the default.
 """
 
 from __future__ import annotations
@@ -31,6 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from pii_redact import Audience, Category, Lexicon, RiskBand, Term  # noqa: E402
+from pii_redact.residual import DisclosurePolicy, protect  # noqa: E402
 from pii_redact.spark import RedactorSpec, build_worker_redactor  # noqa: E402
 
 DATA = ROOT / "data"
@@ -89,6 +96,10 @@ class RecordReport:
     unexpected_categories: list[str] = field(default_factory=list)
     missing_categories: list[str] = field(default_factory=list)
     findings: list[dict] = field(default_factory=list)
+    #: What residual disclosure control would do, when a population is supplied.
+    residual_action: str | None = None
+    #: Manifest expectations that residual control would break.
+    residual_breaks: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -135,7 +146,13 @@ def check_record(report: RecordReport, fields: dict[str, str]) -> RecordReport:
     return report
 
 
-def build_reports(manifest: dict, records: list[dict], spec: RedactorSpec) -> list[RecordReport]:
+def build_reports(
+    manifest: dict,
+    records: list[dict],
+    spec: RedactorSpec,
+    policy: DisclosurePolicy | None = None,
+    apply_residual: bool = False,
+) -> list[RecordReport]:
     survey = build_worker_redactor(spec)
     by_id = {e["id"]: e for e in manifest["records"]}
     reports: list[RecordReport] = []
@@ -169,7 +186,17 @@ def build_reports(manifest: dict, records: list[dict], spec: RedactorSpec) -> li
             if column in METADATA_COLUMNS or not column.startswith(FREE_TEXT_PREFIX):
                 continue
             result = survey.redact_record(value)
-            report.redacted[column] = result.text
+            redacted = result.text
+            if policy is not None:
+                released, decision = protect(redacted, policy)
+                if released != redacted:
+                    report.residual_action = decision.action.value
+                    for needle in report.expected_terms.get("must_appear", []):
+                        if needle in redacted and needle not in released:
+                            report.residual_breaks.append(needle)
+                    if apply_residual:
+                        redacted = released
+            report.redacted[column] = redacted
             report.findings.extend(
                 {
                     "column": column,
@@ -195,7 +222,7 @@ def _band_for(score: float) -> RiskBand:
     return _band(score)
 
 
-def print_report(reports: list[RecordReport], show_clean: bool) -> None:
+def print_report(reports: list[RecordReport], show_clean: bool, population: int | None = None) -> None:
     misses = [r for r in reports if r.missed]
     leaks = [r for r in reports if r.leaked]
     missing_categories = [r for r in reports if r.missing_categories]
@@ -231,6 +258,19 @@ def print_report(reports: list[RecordReport], show_clean: bool) -> None:
         f"{len(missing_categories)} missing categories, {len(bands)} band mismatches)"
     )
 
+    residual = [r for r in reports if r.residual_action]
+    if residual and population is not None:
+        suppressed = sum(1 for r in residual if r.residual_action == "suppress")
+        broken = sorted({f"{r.record_id}  {n!r}" for r in residual for n in r.residual_breaks})
+        print()
+        print(f"Residual disclosure control (population {population}): "
+              f"{len(residual)} fields touched, {suppressed} suppressed")
+        if broken:
+            print(f"  It would break {len(broken)} manifest expectations, which are")
+            print("  authored for the detector-only path:")
+            for item in broken[:10]:
+                print(f"    {item}")
+
     if misses or leaks or missing_categories:
         print()
         print("Outstanding gaps, by class:")
@@ -259,13 +299,28 @@ def main(argv: list[str] | None = None) -> int:
         choices=[a.value for a in Audience],
         default=Audience.INTERNAL.value,
     )
+    parser.add_argument(
+        "--population",
+        type=int,
+        default=None,
+        help="workforce size these responses came from; enables residual "
+        "disclosure control reporting (see module docstring)",
+    )
+    parser.add_argument(
+        "--residual-apply",
+        action="store_true",
+        help="actually apply residual control instead of only reporting it",
+    )
     args = parser.parse_args(argv)
 
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     records = load_records(NDJSON)
     lexicon = None if args.no_lexicon else DEMO_LEXICON
     spec = RedactorSpec.build(salt=args.salt, audience=Audience(args.audience), lexicon=lexicon)
-    reports = build_reports(manifest, records, spec)
+    policy = DisclosurePolicy(population=args.population) if args.population else None
+    reports = build_reports(
+        manifest, records, spec, policy=policy, apply_residual=args.residual_apply
+    )
 
     if args.json:
         print(
@@ -291,7 +346,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
     else:
-        print_report(reports, args.show_clean)
+        print_report(reports, args.show_clean, population=args.population)
 
     return 0 if all(r.ok for r in reports) else 1
 

@@ -34,7 +34,7 @@ from pii_redact.generate import (
     valid_tfn,
     write_corpus,
 )
-from pii_redact.spark import RedactorSpec, summarise_batch
+from pii_redact.spark import RedactorSpec, build_worker_redactor, summarise_batch
 
 SEED = 4242
 COUNT = 300
@@ -276,6 +276,82 @@ class TestRecall:
         # deliberate: relaxing it would mean fuzzy multi-word matching, which
         # trades a large false-positive surface for this margin.
         assert len(missed) >= 1, "misspelled idioms are now matched; update this test"
+
+
+class TestLexiconIndependence:
+    """Recall must not depend on a deployment supplying its own vocabulary.
+
+    A deployment that has never seen this module will not arrive with a list of
+    its own internal project names, and it should not be materially worse off
+    than one that does. Measured, not assumed: ``evaluate_corpus.py
+    --no-lexicon`` reproduces the comparison, and this pins the result so a
+    change that quietly starts leaning on the supplied lexicon is visible.
+    """
+
+    def test_dropping_the_lexicon_does_not_cost_recall(
+        self, corpus: list[GeneratedRecord], lexicon: Lexicon
+    ) -> None:
+        def recall(supplied: Lexicon | None) -> float:
+            redactor = build_worker_redactor(RedactorSpec.build(salt=DEMO_SALT, lexicon=supplied))
+            planted = caught = 0
+            for record in corpus:
+                blob = "\n".join(
+                    redactor.redact_record(record.answers.get(q, "")).text for q in record.answers
+                )
+                for secret in record.secrets:
+                    planted += 1
+                    if secret.literal not in blob:
+                        caught += 1
+            return caught / planted
+
+        with_lexicon = recall(lexicon)
+        without_lexicon = recall(None)
+        assert without_lexicon >= with_lexicon - 0.01, (
+            f"recall fell from {with_lexicon:.3f} to {without_lexicon:.3f} "
+            "without a supplied lexicon"
+        )
+
+
+class TestDegradationFloor:
+    """Misspelling is the weakest axis, and it has to stay visible.
+
+    Measured over the whole corpus it is a small share of planted secrets, so
+    it can regress unnoticed inside an aggregate that barely moves. Pinned as a
+    floor on its own axis, so an improvement shows up as slack and a
+    regression fails immediately.
+    """
+
+    #: Recall on misspelled forms only. See ``examples/evaluate_corpus.py``.
+    #: Measured at 0.70 on this corpus; the floor sits below so an improvement
+    #: shows up as slack and a regression fails loudly. Misspelled values are a
+    #: small share of planted secrets, so they regress silently inside an
+    #: aggregate that barely moves -- which is why this axis is pinned alone.
+    MISSELLED_FLOOR = 0.60
+
+    def test_misspelled_values_meet_the_floor(
+        self, corpus: list[GeneratedRecord], lexicon: Lexicon
+    ) -> None:
+        redactor = build_worker_redactor(RedactorSpec.build(salt=DEMO_SALT, lexicon=lexicon))
+        planted = caught = 0
+        misses: Counter[str] = Counter()
+        for record in corpus:
+            blob = "\n".join(
+                redactor.redact_record(record.answers.get(q, "")).text for q in record.answers
+            )
+            for secret in record.secrets:
+                if secret.degradation != "misspelled":
+                    continue
+                planted += 1
+                if secret.literal not in blob:
+                    caught += 1
+                else:
+                    misses[secret.kind] += 1
+        assert planted >= 20, f"only {planted} misspelled secrets in the corpus"
+        rate = caught / planted
+        assert rate >= self.MISSELLED_FLOOR, (
+            f"misspelled recall {rate:.3f} is below the floor {self.MISSELLED_FLOOR}; "
+            f"worst kinds {misses.most_common(5)}"
+        )
 
 
 class TestOverRedaction:
