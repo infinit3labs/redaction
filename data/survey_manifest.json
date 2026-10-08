@@ -1,0 +1,700 @@
+{
+  "$comment": [
+    "Expectations for data/survey_responses.ndjson. must_not_appear,",
+    "must_appear and categories are authored from the specification of what a",
+    "WHS redactor ought to do, not from observed output.",
+    "",
+    "The fixture is a survey of a workplace health cover provider: Q1 asks how",
+    "the service they received was, Q2 what to improve, Q3 comments on",
+    "psychosocial issues at work, Q4 anything else, Q5 follow-up consent. Every",
+    "record answers the service question as well as the psychosocial one, because",
+    "a survey that only measures the workplace is not the survey that was sent.",
+    "",
+    "risk_band is different in kind: it is a CALIBRATION PLACEHOLDER captured",
+    "from a run of this suite, not ground truth. The bands depend on the weights",
+    "in pii_redact.risk.WEIGHTS, which are starting points rather than",
+    "measurements. Tune them against your own human review outcomes, then",
+    "update this file to match. The runner reports band mismatches separately",
+    "from detection failures for exactly this reason.",
+    "",
+    "The band measures how identifiable a record is, not how serious it is.",
+    "S029, S032 and S041 are severe and score low or moderate; S013 is empty",
+    "and scores nothing. Route severity elsewhere."
+  ],
+  "salt_note": "supplied at runtime by the runner; not stored here",
+  "records": [
+    {
+      "id": "S001",
+      "note": "Negative control. Ordinary praise for the provider and the workplace, no identifiers and no numbers worth hiding.",
+      "must_not_appear": [],
+      "must_appear": [
+        "generally a good place",
+        "team is supportive"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S002",
+      "note": "Negative control. Names no one and nothing, and mentions a supervisor without attributing anything. 'No issues to report' must not score as a complaint narrative.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Training is good",
+        "decent supervisor"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S003",
+      "note": "Negative control. Off-topic and brief, the way people really answer a survey box they do not care about. The four digit year must survive: a year alone is not a date.",
+      "must_not_appear": [],
+      "must_appear": [
+        "2026",
+        "annual refresher"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S004",
+      "note": "Hard negatives, wrapped in a realistic claim dispute. A claim reference, a money amount, two version strings, and an 11 digit run one digit off a valid ABN must all survive.",
+      "must_not_appear": [],
+      "must_appear": [
+        "CLM-2026-8812",
+        "$1,250.00",
+        "v1.2.3.4",
+        "2.4.0.1",
+        "5300000100"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S005",
+      "note": "Direct contact details plus a named employer, volunteered in the follow-up box because the survey asked whether the provider could call back.",
+      "must_not_appear": [
+        "0412 345 678",
+        "jane.doe@example.com.au",
+        "Acme Pty Ltd"
+      ],
+      "must_appear": [
+        "my manager is fair",
+        "childcare"
+      ],
+      "categories": [
+        "phone",
+        "email",
+        "organisation_name"
+      ],
+      "risk_band": "critical"
+    },
+    {
+      "id": "S006",
+      "note": "Employer attribution without any proper noun: a modern award code and an enterprise agreement, both named in the first clause of a real answer.",
+      "must_not_appear": [
+        "MA000019"
+      ],
+      "must_appear": [
+        "renegotiated last year",
+        "Clerical Award"
+      ],
+      "categories": [
+        "award"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S007",
+      "note": "Internal systems and programs. Every term here names the employer to an employee without naming it, and the respondent says so plainly: the service was fine, the workplace was not.",
+      "must_not_appear": [
+        "intranet",
+        "EAP",
+        "ReturnToWork"
+      ],
+      "must_appear": [
+        "never happened",
+        "ignored my incident report"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S008",
+      "note": "Named employers in employment framing, a site name and a bare job title. 'Joined' must not be captured as part of the organisation name. Fatigue is disclosed in the psychosocial box without naming a condition.",
+      "must_not_appear": [
+        "Reticule Health",
+        "Northline Services",
+        "Parramatta"
+      ],
+      "must_appear": [
+        "last year as a",
+        "Joined",
+        "Fatigue on the late run"
+      ],
+      "categories": [
+        "organisation_name",
+        "job_title",
+        "tenure",
+        "implication"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S009",
+      "note": "Quasi-identifier stack: grade, occupation, employment status, tenure, team size, start year, and a uniqueness claim. Age and tenure must be banded, not deleted.",
+      "must_not_appear": [
+        "Grade 4"
+      ],
+      "must_appear": [
+        "10-19 years",
+        "2-5 people",
+        "on nights",
+        "2019"
+      ],
+      "categories": [
+        "job_title",
+        "tenure",
+        "team_size",
+        "employment_status",
+        "implication"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S010",
+      "note": "The core bullying narrative. No direct identifiers at all, but the highest-scoring text in the set, and a reminder that a service answer does not lower the psychosocial band.",
+      "must_not_appear": [],
+      "must_appear": [
+        "is a bully",
+        "meetings",
+        "Human Resources",
+        "same week"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S011",
+      "note": "Health detail is the finding, not the identifier. It must be tokenised so responses can still be grouped, never deleted, and the causal wording about the restructure must survive.",
+      "must_not_appear": [
+        "anxiety",
+        "chronic migraines"
+      ],
+      "must_appear": [
+        "after the restructure",
+        "sick leave",
+        "every week now"
+      ],
+      "categories": [
+        "health_detail",
+        "job_title"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S012",
+      "note": "Checksummed identifiers volunteered in answer to a reimbursement form that rejected them. All three values pass their ATO or Services Australia check, so all three must be caught.",
+      "must_not_appear": [
+        "100 000 001",
+        "2 1234 5678 2",
+        "12/03/1985"
+      ],
+      "must_appear": [
+        "DOB",
+        "TFN",
+        "Medicare"
+      ],
+      "categories": [
+        "tfn",
+        "medicare",
+        "date_au"
+      ],
+      "risk_band": "critical"
+    },
+    {
+      "id": "S013",
+      "note": "Sparse record. All free text empty, which is what an abandoned survey response looks like in an export. Nothing to do, and it must not raise.",
+      "must_not_appear": [],
+      "must_appear": [],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S014",
+      "note": "Heavy misspelling: managr, targetting, Bui11ing (leet), singel, intrant, repotr. Prose must survive while the internal terms are caught, even though the respondent also misspells the provider's service.",
+      "must_not_appear": [
+        "intrant"
+      ],
+      "must_appear": [
+        "every singel day"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S015",
+      "note": "Lower case employer name and misspelled internal systems: timsheet sytem, supervizor, Kestral. 'acme pty ltd' is a named employer written without capitals, which the proper noun rules miss by design.",
+      "must_not_appear": [
+        "timsheet",
+        "Kestral"
+      ],
+      "must_appear": [
+        "nobody told us why",
+        "complete disgrace"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S016",
+      "note": "Obfuscation, and a realistic reason for it: a respondent who does not want to be called at work. Fullwidth digits and a spaced out email address. Neither is in a canonical format.",
+      "must_not_appear": [
+        "\uff10\uff14\uff11\uff12",
+        "j a n e"
+      ],
+      "must_appear": [
+        "phone is always on silent"
+      ],
+      "categories": [
+        "phone",
+        "email"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S017",
+      "note": "Misspelling plus a quasi stack: bullylng, rampnt, tehcnician, 6 years of servcie, team of two. 'the safety breifing' also exercises the documented briefing false positive.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Nobody in HR does anyhting about it",
+        "was a joke"
+      ],
+      "categories": [
+        "team_size",
+        "employment_status",
+        "job_title",
+        "implication",
+        "internal_term"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S018",
+      "note": "Two payment card numbers with valid Luhn, one formatted with spaces and one not, in the gap payment an optical claim actually produces. 'declined at the store' is a transaction, not a workplace.",
+      "must_not_appear": [
+        "4111 1111 1111 1111",
+        "3782 822463 10005"
+      ],
+      "must_appear": [
+        "declined at the store",
+        "works fine"
+      ],
+      "categories": [
+        "credit_card"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S019",
+      "note": "Provider identifiers plus a BSB with a routing label, all of which appear in a reimbursement dispute. All three must be caught; the account number next to the BSB must survive, because redacting it removes the payment evidence without reducing risk.",
+      "must_not_appear": [
+        "53 000 001 007",
+        "000001007",
+        "062000"
+      ],
+      "must_appear": [
+        "does not match anything",
+        "account 12345678"
+      ],
+      "categories": [
+        "abn",
+        "acn",
+        "bsb"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S020",
+      "note": "Residential and postal addresses, which is what a cheque or a reimbursement claim needs. The street, the PO box and the state-qualified postcode must go. Bare suburb names are a known coverage gap: 'Surry Hills' survives inside the postal line, while 'the Box Hill site' is caught because it is described as a workplace site. There is no gazetteer, and the fix is a site list supplied through the lexicon, not a regex.",
+      "must_not_appear": [
+        "Collins Street",
+        "PO Box 231",
+        "NSW 2010"
+      ],
+      "must_appear": [
+        "I live at",
+        "and work at the",
+        "Surry Hills"
+      ],
+      "categories": [
+        "street_address",
+        "postcode",
+        "implication"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S021",
+      "note": "Age, tenure, team size and employment status with no label words. These are the free form phrasings respondents actually use. 'Melbourne' disappears as a side effect of the tenure run that swallowed '18 years in the Melbourne', not because a suburb was detected.",
+      "must_not_appear": [
+        "Melbourne"
+      ],
+      "must_appear": [
+        "25-34",
+        "10-19 years",
+        "11-20 people",
+        "rotating between days and nights"
+      ],
+      "categories": [
+        "age",
+        "tenure",
+        "team_size",
+        "employment_status"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S022",
+      "note": "A respondent pasting the specialist's own words into the survey, which is how clinical detail enters a claims survey. Names need the NLP stage.",
+      "must_not_appear": [
+        "Jane Citizen",
+        "03/02/2024",
+        "12 March 2024"
+      ],
+      "must_appear": [
+        "Patient:",
+        "2024"
+      ],
+      "categories": [
+        "name",
+        "location",
+        "age",
+        "date_au"
+      ],
+      "risk_band": "critical"
+    },
+    {
+      "id": "S023",
+      "note": "The workplace contact the provider asked for, with a team, a site and two direct identifiers. All three identifier types present.",
+      "must_not_appear": [
+        "Frank Halvorsen",
+        "0400 111 222",
+        "frank.halvorsen@acmelogistics.com.au"
+      ],
+      "must_appear": [
+        "Logistics",
+        "workplace contact"
+      ],
+      "categories": [
+        "name",
+        "phone",
+        "email",
+        "internal_term"
+      ],
+      "risk_band": "critical"
+    },
+    {
+      "id": "S024",
+      "note": "Misspelled internal processes: frakty, asessment, proccess. No identifiers, so this should be low risk despite the spelling and despite being about an ignored safety concern.",
+      "must_not_appear": [],
+      "must_appear": [
+        "nothing was done",
+        "never updated"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S025",
+      "note": "Employment status, age, and an explicit request that the employer not find out. The request itself is a risk signal, and it must outweigh a short answer with two quasi-identifiers.",
+      "must_not_appear": [
+        "barista",
+        "61"
+      ],
+      "must_appear": [
+        "four a week",
+        "without notice",
+        "looking elsewhere"
+      ],
+      "categories": [
+        "job_title",
+        "age",
+        "employment_status"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S026",
+      "note": "Wholehearted service praise with no psychosocial content at all. A survey of a service provider should contain some of these, or the redactor looks like it has only been tested against complaints.",
+      "must_not_appear": [],
+      "must_appear": [
+        "did not rush me",
+        "approved the same day"
+      ],
+      "categories": [
+        "job_title"
+      ],
+      "risk_band": "low"
+    },
+    {
+      "id": "S027",
+      "note": "A claim chased for months, with the member number volunteered in the hope it would speed things up. That number is not caught: a provider's own member and claim references are not in the rules, and residual disclosure control is the layer meant to catch them.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Nobody in the claims team",
+        "I have rung the service centre"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S028",
+      "note": "Workload and understaffing, which is the most common psychosocial hazard in an Australian workplace and the one least often written as a complaint. 'Everyone is on overtime' is a protected-characteristic signal, and the WHS consultation is an internal term, so both sides of this record are attributed to the employer.",
+      "must_not_appear": [],
+      "must_appear": [
+        "three people short",
+        "on overtime",
+        "nothing changes"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S029",
+      "note": "Sexual harassment with a confidentiality request and an age disclosure. The complaint is in Q2 and Q3 while the form's own consent box is at the end, which is where respondents put it. Scores moderate: the band measures identifiability, not severity.",
+      "must_not_appear": [
+        "27"
+      ],
+      "must_appear": [
+        "comments about my appearance",
+        "Two other women",
+        "keep this anonymous"
+      ],
+      "categories": [
+        "age",
+        "implication"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S030",
+      "note": "Return to work, which is where the provider and the employer meet: a service complaint and a psychosocial complaint in the same response. The case manager praise must survive, because it is the service signal.",
+      "must_not_appear": [],
+      "must_appear": [
+        "case manager has been good",
+        "every review moves the date"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S031",
+      "note": "Change management and consultation. Framed as a question rather than a complaint, which is how people write when they still expect to be consulted. Nothing identifying in it.",
+      "must_not_appear": [],
+      "must_appear": [
+        "under review",
+        "rumour mill"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S032",
+      "note": "An all caps rant about the provider's service, with no identifiers at all. 'WORKPLACE COVER FROM THESE PEOPLE' is not an organisation name, and shouting is not attribution.",
+      "must_not_appear": [],
+      "must_appear": [
+        "ABSOLUTE DISASTER",
+        "DO NOT BUY WORKPLACE COVER FROM THESE PEOPLE"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S033",
+      "note": "Second language English, plain and unpunctuated, as it is actually written. 'I have family at home' is not a health disclosure and must not be reported as one.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Is very good thank you",
+        "I have family at home"
+      ],
+      "categories": [
+        "employment_status"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S034",
+      "note": "Rural telehealth praise next to double shifts and childcare. Fatigue is the complaint and the cover is not, which is the distinction the survey exists to draw. Low band: a small team is the only quasi-identifier here.",
+      "must_not_appear": [],
+      "must_appear": [
+        "no two hour drive to a clinic",
+        "12 hour shifts back to back",
+        "2-5 people"
+      ],
+      "categories": [
+        "team_size"
+      ],
+      "risk_band": "low"
+    },
+    {
+      "id": "S035",
+      "note": "A forwarded message with the sender's name removed. 'my manager sent the team' is a sentence about a person, not the name of a unit, and must not be redacted to a unit label.",
+      "must_not_appear": [],
+      "must_appear": [
+        "what my manager sent the team",
+        "incident form"
+      ],
+      "categories": [],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S036",
+      "note": "EAP counselling used through the provider's referral line, with the real complaint being that the appointment fell in work hours. The internal term is caught; the reason it was unusable must survive.",
+      "must_not_appear": [
+        "EAP"
+      ],
+      "must_appear": [
+        "during work hours",
+        "deserves a medal"
+      ],
+      "categories": [
+        "internal_term"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S037",
+      "note": "A psychological injury claim nobody explained, three years on. 'return to work' is an internal term and is caught; 'the same symptoms' is not reported as health detail, because there is no 'my symptom' cue. The finding a psychosocial survey needs is on the clinical record, not in the free text.",
+      "must_not_appear": [],
+      "must_appear": [
+        "support existed",
+        "same symptoms",
+        "10-19 years"
+      ],
+      "categories": [
+        "internal_term",
+        "tenure"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S038",
+      "note": "Age and tenure stated as a bare pair of numbers, the way people answer a demographic question. The depot closure is the workplace signal; the age is not detected because there is no 'I am' cue.",
+      "must_not_appear": [],
+      "must_appear": [
+        "61, 34 years in",
+        "my knee treated"
+      ],
+      "categories": [
+        "implication"
+      ],
+      "risk_band": "low"
+    },
+    {
+      "id": "S039",
+      "note": "The youngest person on a team, being watched after hours, and dismissing the account when they raised it. Age is generalised; the complaint survives intact.",
+      "must_not_appear": [
+        "19"
+      ],
+      "must_appear": [
+        "first job",
+        "imagining it"
+      ],
+      "categories": [
+        "age"
+      ],
+      "risk_band": "low"
+    },
+    {
+      "id": "S040",
+      "note": "A named treating clinic. Provider-side attribution is still attribution: the clinic and the episode together identify a treatment, and this is the only record where the provider's own network is named.",
+      "must_not_appear": [
+        "Northshore Medical Centre"
+      ],
+      "must_appear": [
+        "Nobody owns the delay"
+      ],
+      "categories": [
+        "organisation_name"
+      ],
+      "risk_band": "low"
+    },
+    {
+      "id": "S041",
+      "note": "An exclusion decision quoted verbatim from the letter the provider sent, with the specialist's contradicting note. Month-day dates are reported but pass through the generaliser unchanged, because without a year there is nothing to narrow to.",
+      "must_not_appear": [],
+      "must_appear": [
+        "excluded as a pre-existing condition",
+        "a workplace injury, not pre-existing"
+      ],
+      "categories": [
+        "date_au"
+      ],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S042",
+      "note": "A rating and nothing else, which is what most responses to a service survey are. 'no complaints' would score as a complaint narrative, so it is not used here.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Great service",
+        "n/a"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S043",
+      "note": "A second language response with the provider's caseworker named, in Vietnamese. The name survives: a third party named without a label or honorific is a documented gap. Non-ASCII text must pass through byte for byte, and the uniqueness claim must still score.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Nguyễn Thị Hương",
+        "the only one who actually called me back",
+        "công ty không trả lương đúng hạn"
+      ],
+      "categories": [],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S044",
+      "note": "One long answer to everything: appointment waits, rostering, fatigue, a decade of service, an age, a uniqueness claim and a claim reference. Long free text is where several quasi-identifiers arrive at once, and it still must not be mangled.",
+      "must_not_appear": [
+        "I am 54"
+      ],
+      "must_appear": [
+        "graveyard shift",
+        "sleep hygiene",
+        "CLM-2026-3311"
+      ],
+      "categories": [
+        "age",
+        "job_title"
+      ],
+      "risk_band": "high"
+    },
+    {
+      "id": "S045",
+      "note": "The provider misspelled the respondent's surname, in lower case, in an angry reply. A surname with no label and no honorific is not detected by default; the known limit is the NLP stage, and this record is the fixture that shows it.",
+      "must_not_appear": [],
+      "must_appear": [
+        "its Okafor not Okefor",
+        "it was my fault"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    }
+  ]
+}

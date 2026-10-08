@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pii-redact"
+version = "0.1.0"
+description = "Deterministic-first PII redaction with AU-aware identifiers and optional NLP augmentation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+nlp = ["spacy>=3.7"]
+dev = ["pytest>=7.4", "ruff>=0.5"]
+
+[project.scripts]
+pii-redact = "pii_redact.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pii_redact"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# RUF001 flags the typographic apostrophes and quotes that appear throughout
+# this package. That is deliberate: they are Australian names in test data and
+# exactly the kind of character survey free text contains, so the source and
+# fixtures need them verbatim.
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
