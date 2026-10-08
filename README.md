@@ -469,23 +469,82 @@ Entity-level values do better: the lexicon's SymSpell index absorbs one edit, so
 
 ## Sample survey data and the evaluation suite
 
-`data/survey_responses.ndjson` is 45 Qualtrics-shaped records from a workplace
-health cover survey: `Q1` asks how the service they received was, `Q2` what to
+`data/survey_responses.ndjson` is 58 Qualtrics-shaped records from a workplace
+health cover provider: `Q1` asks how the service they received was, `Q2` what to
 improve, `Q3` comments on psychosocial issues at work, `Q4` anything else and
-`Q5` follow-up consent. Every record answers the service question as well as the
-psychosocial one, because a survey that only measured the workplace would not be
-the survey that was sent, and a redactor tested only against complaints learns
-nothing about praise.
+`Q5` follow-up consent. Almost every record answers the service question as well
+as the psychosocial one, because a survey that only measured the workplace would
+not be the survey that was sent, and a redactor tested only against complaints
+learns nothing about praise.
+
+### Two instruments, one export
+
+The export merges two surveys, and every record says which one it came from in an
+`Instrument` column. The distinction is enforced, not documented:
+
+| `Instrument` | What it is | What it collects by design |
+| --- | --- | --- |
+| `service-pulse` | The routine member survey, `Q1`–`Q5`. `Q3` invites a psychosocial comment, so hazard prose appears here. | Nothing financial |
+| `reimbursement` | The claims, authorisation and payment form path | TFN, Medicare, date of birth, ABN, ACN, BSB, bank account |
+
+That split is what makes `S012` defensible. **No psychosocial survey collects a
+TFN**, so a TFN, a Medicare number or a date of birth cannot have arrived
+through the hazard half of the survey; they came through the reimbursement half.
+A single-instrument fixture cannot account for them at all, which is the most
+available realism error in this corpus.
+
+`TestInstrumentStratum` fails if a reimbursement-category finding lands on a
+`service-pulse` record — and it fails on the *fixture*, not the detector, because
+the detection itself would have passed. Claim references are deliberately outside
+that invariant: a respondent pastes a claim number into a hazard box, and `S044`
+does exactly that.
+
+Consent is modelled the same way, because the obvious simplification is wrong in
+a way that shows. `Consent` is a discrete item — `yes`, `no`, `yes-not-employer`,
+`yes-anonymous` — and `Q5` holds only the free-text *conditions* on follow-up
+contact. A single free-text consent box is empty 44 times out of 45, which is not
+a consent item, and `yes but not my employer` grants something quite different
+from silence.
+
+### The hazard mix is weighted, and not toward the nastiest hazards
+
+Safe Work Australia's *Managing Psychosocial Hazards at Work* Code of Practice
+names 17 hazards. This corpus does not distribute across them evenly, because the
+national data says not to. The [2026 Australian Worker Exposure Survey](https://data.safeworkaustralia.gov.au/)
+reports the largest single disagreement on influence — 21.8% disagree they have a
+say in changes that affect them — while 94.4% agree they have clarity of duties
+and 84.0% agree they receive support to work safely.
+
+So change management, role clarity, recognition and job insecurity are
+represented rather than left as a bullying monoculture, and so are
+**protectives**: `S046`, `S047`, `S048` and `S058` are a worker describing
+conditions that are working. A psychosocial corpus built only from complaints
+misrepresents the population it claims to sample, and worse, teaches a redactor
+that hazard prose is the only prose worth being careful with.
+
+Worth noting how the protective records are worded. `"I am clear on what my
+responsibilities are"` is the literal validated item, and it does not appear
+here: the health cue is `I am` plus a denylist, and it reads `clear` as a health
+adjective and reports `I am [HEALTH DETAIL] on what my responsibilities are`.
+The protectives are phrased as free text instead, which is what a respondent
+actually types into a box.
 
 The response set deliberately spans the shapes a real export contains:
 
 | | |
 | --- | --- |
 | Register | Terse one-liners, all-caps rants, all-lower-case replies, second-language English, a Vietnamese answer, an abandoned response with no text at all |
-| Psychosocial hazard | Bullying, harassment, workload and understaffing, fatigue and shift work, unconsulted restructure, roster changes, return to work, a colleague dismissing a report |
+| Psychosocial hazard | Bullying, harassment, workload and understaffing, fatigue and shift work, unconsulted restructure, roster changes, return to work, a colleague dismissing a report, change announced the day it happened, three competing priorities, absent recognition, casual hours cut each quarter, indirect exposure to traumatic material, night work in an empty building, tracked time and keystroke metrics, a workplace at forty degrees, a customer who put a fist through the counter |
+| Protective | Role clarity, practical support, a team that covers for each other, short handed but coping with a supervisor who asks what you need |
 | Service | Claim delays, pre-approval, gap payment, referral approval, EAP counselling, telehealth, exclusion decisions, refunds that have not arrived |
 | Identifier | Phone, email, TFN, Medicare, DOB, cards, ABN, ACN, BSB, street and postal addresses, a named employer, a named treating clinic, an award code, an internal system |
 | Hard negatives | Claim references, dollar amounts, version strings, a four-digit year, an 11-digit run one digit off a valid ABN |
+
+Twenty-six of the 58 records declare no categories at all and are asserted to
+produce no detections. Thirteen of those are the new psychosocial records, which
+means the suite now proves that hazard and protective prose survives redaction
+byte for byte — a claim the old corpus, being almost entirely complaints, could
+not make.
 
 The corpus is fixture data, so it uses documentation IP ranges and invented
 organisations throughout.
@@ -568,6 +627,25 @@ found two more: "I am APS 6" was claimed by the health cue and labelled
 `[HEALTH DETAIL]`, and an officer level inside a comma list ("a case officer,
 APS 6, in the complaints branch") matched no rule at all, because the level rule
 required whitespace after the number.
+
+Extending the fixture from 45 to 58 records against the Code of Practice hazard
+list found three more, all on the protective side and all left open rather than
+dodged in the fixture text:
+
+| Text | What happened |
+| --- | --- |
+| "I am clear on what my responsibilities are" | The validated People at Work role-clarity item, reported as `I am [HEALTH DETAIL] on what my responsibilities are` |
+| "I have support to work safely" | The validated support item, same route: `I have [HEALTH DETAIL] to work safely` |
+| "I am the only one on site after 10pm" | `I am [IMPLICATION] after 10pm`, with the uniqueness clause cut at "the only one" and the trailing preposition orphaned into the sentence |
+
+The first two are the same defect the README already documents — the health cue
+is `I am`/`I have` plus a denylist — landing on the two most common protective
+items in the national data. Adding `clear` and `support` to the denylist is the
+obvious fix and is not applied here: the denylist is a blunt instrument, and the
+evidence that it needs replacing rather than extending is that it is currently
+catching validated survey wording. That is a detector change with its own
+regression surface, so it belongs in its own pass with its own justification,
+not smuggled in behind a data fixture.
 
 The lesson worth keeping: a mock corpus is only as good as the register it is
 written in. Tidy prose hides false positives, because tidy prose is not what

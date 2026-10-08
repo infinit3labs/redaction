@@ -4,11 +4,48 @@
     "must_appear and categories are authored from the specification of what a",
     "WHS redactor ought to do, not from observed output.",
     "",
-    "The fixture is a survey of a workplace health cover provider: Q1 asks how",
-    "the service they received was, Q2 what to improve, Q3 comments on",
-    "psychosocial issues at work, Q4 anything else, Q5 follow-up consent. Every",
-    "record answers the service question as well as the psychosocial one, because",
-    "a survey that only measures the workplace is not the survey that was sent.",
+    "THE INSTRUMENT. Two surveys, one export. Every record carries an",
+    "'Instrument' column saying which one it came from, and the distinction is",
+    "load-bearing rather than decorative:",
+    "",
+    "  service-pulse   the routine member survey, Q1 to Q5. Q3 invites a",
+    "                  psychosocial comment, so hazard prose appears here, but",
+    "                  the instrument never asks for a financial identifier.",
+    "  reimbursement  the claims, authorisation and payment form path, where a",
+    "                  TFN, a Medicare number, a date of birth, an ABN, a BSB",
+    "                  and a bank account are collected BY DESIGN.",
+    "",
+    "That is the only thing that makes S012 defensible. No psychosocial survey",
+    "collects a TFN, so those values cannot have come from the hazard half; they",
+    "came from the reimbursement half. A single-instrument fixture cannot account",
+    "for them at all, and the most available realism error in this corpus is",
+    "pretending otherwise.",
+    "",
+    "TestInstrumentStratum enforces it: a reimbursement-category finding on a",
+    "service-pulse record fails the suite even though the detection itself would",
+    "have passed. Claim references are deliberately NOT part of that invariant,",
+    "because a respondent will paste a claim number into a hazard box and S044",
+    "does exactly that.",
+    "",
+    "CONSENT. 'Consent' is a discrete item (yes, no, yes-not-employer,",
+    "yes-anonymous) and Q5 holds the free-text conditions on follow-up contact.",
+    "Modelling both as one free-text box is the obvious simplification and it is",
+    "wrong in a way that shows: a consent field empty 44 times out of 45 is not a",
+    "consent field, and 'yes but not my employer' grants something quite different",
+    "from silence.",
+    "",
+    "THE HAZARD MIX IS DELIBERATE AND NON-UNIFORM. Safe Work Australia's",
+    "Managing Psychosocial Hazards at Work Code of Practice names 17 hazards.",
+    "The mix here is weighted, and not toward the nastiest ones, because the",
+    "national data says otherwise. The 2026 Australian Worker Exposure Survey",
+    "puts the largest disagreement on influence over change (21.8% disagree",
+    "they have a say in changes that affect them), while 94.4% agree they have",
+    "clarity of duties and 84.0% agree they get support to work safely. So",
+    "change management, role clarity, recognition and job insecurity are",
+    "represented, and so are PROTECTIVES: S046 to S048 and S058 are a worker",
+    "describing conditions that are working. A psychosocial corpus made only of",
+    "complaints misrepresents the population and, worse, teaches a redactor that",
+    "hazard prose is the only prose that matters.",
     "",
     "risk_band is different in kind: it is a CALIBRATION PLACEHOLDER captured",
     "from a run of this suite, not ground truth. The bands depend on the weights",
@@ -258,7 +295,7 @@
       "id": "S016",
       "note": "Obfuscation, and a realistic reason for it: a respondent who does not want to be called at work. Fullwidth digits and a spaced out email address. Neither is in a canonical format.",
       "must_not_appear": [
-        "\uff10\uff14\uff11\uff12",
+        "０４１２",
         "j a n e"
       ],
       "must_appear": [
@@ -692,6 +729,149 @@
       "must_appear": [
         "its Okafor not Okefor",
         "it was my fault"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S046",
+      "note": "Protective. Role clarity is the strongest single condition in the national data (94.4% agree they have clarity of duties), so the corpus needs a record where the work is legible. 'I am clear on what my responsibilities are' is the literal validated item and is left out on purpose: the health cue is 'I am' plus a denylist, and it reads 'clear' as a health adjective. Free text says the same thing without tripping it.",
+      "must_not_appear": [],
+      "must_appear": [
+        "know exactly what my job involves",
+        "told when it changes"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S047",
+      "note": "Protective. Poor support is a listed hazard, so support being present is survey signal too (84.0% report it). Phrased around help rather than 'I have support', for the same denylist reason as S046.",
+      "must_not_appear": [],
+      "must_appear": [
+        "always someone to help me",
+        "come and look with me"
+      ],
+      "categories": [],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S048",
+      "note": "Protective. Conflict and poor workplace relationships are a hazard, and a team that covers for each other is the counterfactual. Unusually for a fixture, this record is worth nothing to a detector, which is the point: it is a negative control that reads like real survey prose.",
+      "must_not_appear": [],
+      "must_appear": [
+        "team is good",
+        "people cover for each other"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S049",
+      "note": "Change management, which the AWES puts as the largest single area of national disagreement. Announced-then-consulted is the ordinary Australian version of it: the notice goes up the same day it happens.",
+      "must_not_appear": [],
+      "must_appear": [
+        "restructure announced the same day",
+        "notice on the door"
+      ],
+      "categories": [],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S050",
+      "note": "Lack of role clarity, in the respondent's own words: three people giving three priorities is conflict without any single bully, which is the harder case and the one a bullet list of hazards misses.",
+      "must_not_appear": [],
+      "must_appear": [
+        "still confused about what my role involves",
+        "a different priority"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S051",
+      "note": "Inadequate recognition. Low severity and high prevalence, and written the way it is actually written: nobody objects to the absence, they just notice its shape.",
+      "must_not_appear": [],
+      "must_appear": [
+        "Good work gets no comment",
+        "when something is not right"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S052",
+      "note": "Job insecurity. Casual hours cut without notice; the identifying content is the roster, not the person.",
+      "must_not_appear": [],
+      "must_appear": [
+        "hours get cut every quarter",
+        "rostered next week"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S053",
+      "note": "Traumatic events or material, in the indirect form the Code describes: not exposure to violence but to other people's accounts of it, by reading reports and ringing families. The strongest Australian exposure is concentrated in health, community service and protective roles.",
+      "must_not_appear": [],
+      "must_appear": [
+        "reading reports about bad accidents",
+        "stay with you"
+      ],
+      "categories": [],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S054",
+      "note": "Remote or isolated work. 'I am the only one on site' trips the implication rule as a uniqueness claim, so it is written as a state of the building instead, which is how it is usually reported.",
+      "must_not_appear": [],
+      "must_appear": [
+        "work alone at night",
+        "nobody to call until morning"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S055",
+      "note": "Intrusive surveillance. Tracked time and productivity metrics are an emerging psychosocial hazard and a plausible source of a compensation complaint about unpaid breaks.",
+      "must_not_appear": [],
+      "must_appear": [
+        "track every minute of the day",
+        "unpaid time off"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S056",
+      "note": "Poor physical environment, listed separately from psychological harm precisely because it causes both. A broken fan in summer is a workplace, not a home, which is what makes it a hazard finding rather than a comfort complaint.",
+      "must_not_appear": [],
+      "must_appear": [
+        "fans have been broken since summer",
+        "nothing has happened"
+      ],
+      "categories": [],
+      "risk_band": "moderate"
+    },
+    {
+      "id": "S057",
+      "note": "Violence and aggression. A single incident, reported flatly, and then normalised by management: 'we were told it comes with the job'. That normalisation is the hazard as much as the fist is.",
+      "must_not_appear": [],
+      "must_appear": [
+        "put a fist through the counter",
+        "comes with the job"
+      ],
+      "categories": [],
+      "risk_band": "low"
+    },
+    {
+      "id": "S058",
+      "note": "Protective under pressure. Short handed but coping, and consulted when priorities move. This is the response a psychosocial survey is built to detect the absence of, so its absence from a fixture is a blind spot.",
+      "must_not_appear": [],
+      "must_appear": [
+        "short handed but we manage",
+        "asks what we need"
       ],
       "categories": [],
       "risk_band": "low"

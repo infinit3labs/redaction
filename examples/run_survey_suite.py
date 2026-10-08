@@ -58,8 +58,18 @@ DEMO_LEXICON = Lexicon.from_terms(
     ]
 )
 
-#: Qualtrics metadata columns are not free text and are not redacted.
-METADATA_COLUMNS = {"ResponseID", "StartDate", "EndDate", "IPAddress"}
+#: Qualtrics metadata and structured instrument items are not free text and are
+#: not redacted. ``Instrument`` records which survey the response came from and
+#: ``Consent`` is the discrete follow-up permission item; the free-text
+#: conditions on follow-up contact are Q5.
+METADATA_COLUMNS = {
+    "ResponseID",
+    "StartDate",
+    "EndDate",
+    "IPAddress",
+    "Instrument",
+    "Consent",
+}
 FREE_TEXT_PREFIX = "Q"
 
 

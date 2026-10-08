@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -49,8 +50,34 @@ DEMO_LEXICON = Lexicon.from_terms(
 #: every run for the assertions below to mean anything.
 DEMO_SALT = "0" * 32
 
-#: Qualtrics metadata, not free text.
-METADATA_COLUMNS = {"ResponseID", "StartDate", "EndDate", "IPAddress"}
+#: Qualtrics metadata and structured instrument items, not free text.
+#: ``Instrument`` records which survey the response came from and ``Consent``
+#: is the discrete follow-up permission item; neither is something a respondent
+#: types, so neither is redacted. Conditions on follow-up contact are free text
+#: and live in Q5.
+METADATA_COLUMNS = {
+    "ResponseID",
+    "StartDate",
+    "EndDate",
+    "IPAddress",
+    "Instrument",
+    "Consent",
+}
+
+#: Identifiers a reimbursement or authorisation form collects BY DESIGN. The
+#: point of the stratum is that a routine member survey never asks for these,
+#: so finding one outside the stratum means the fixture has lost its framing.
+REIMBURSEMENT_CATEGORIES = frozenset(
+    {"tfn", "medicare", "abn", "acn", "bsb", "credit_card", "street_address", "postcode"}
+)
+
+#: The records collected through the reimbursement, authorisation or claims
+#: path. Pinned so the stratum is an assertion about the fixture rather than
+#: something re-derived from the manifest on every run, which would let a
+#: mislabelled record define its own exemption.
+REIMBURSEMENT_RECORD_IDS = frozenset(
+    {"S004", "S012", "S018", "S019", "S020", "S022", "S027", "S030", "S041"}
+)
 
 
 @pytest.fixture(scope="module")
@@ -370,6 +397,103 @@ class TestRiskCalibration:
             }
             worst = max(observed, key=lambda b: list(RiskBand).index(b))
             assert worst is RiskBand(band), f"{response_id} bands drifted: {observed}"
+
+
+class TestInstrumentStratum:
+    """The export merges two surveys. The corpus has to keep them apart.
+
+    A routine member service survey never asks for a TFN, a Medicare number or
+    a bank account. Those arrive through the reimbursement and authorisation
+    form path instead. If a reimbursement identifier turns up on a
+    ``service-pulse`` record, the fixture has lost the framing that makes it
+    defensible, and the detection would still pass -- which is exactly why this
+    is asserted separately from the manifest.
+    """
+
+    def test_reimbursement_identifiers_stay_in_their_stratum(
+        self, manifest: dict, redacted: dict, records: list[dict]
+    ) -> None:
+        failures = []
+        for record in records:
+            rid = record["ResponseID"]
+            if record["Instrument"] == "reimbursement":
+                continue
+            found = categories_of(redacted, rid) & REIMBURSEMENT_CATEGORIES
+            if found:
+                failures.append(f"{rid}: {sorted(found)} on a service-pulse record")
+        assert not failures, "reimbursement identifiers outside the stratum:\n  " + "\n  ".join(failures)
+
+    def test_the_stratum_agrees_with_what_was_detected(self, manifest: dict) -> None:
+        """Every record whose expectations name a reimbursement category has to
+        actually sit in that stratum, so the two cannot drift apart."""
+        failures = [
+            e["id"]
+            for e in manifest["records"]
+            if REIMBURSEMENT_CATEGORIES & set(e["categories"])
+            and e["id"] not in REIMBURSEMENT_RECORD_IDS
+        ]
+        assert not failures, f"expected reimbursement category outside the stratum: {failures}"
+
+    def test_both_strata_are_substantial(self, records: list[dict]) -> None:
+        """A stratum with one record in it is a label, not a stratum."""
+        counts: dict[str, int] = {}
+        for record in records:
+            counts[record["Instrument"]] = counts.get(record["Instrument"], 0) + 1
+        assert set(counts) == {"service-pulse", "reimbursement"}, counts
+        for name, count in counts.items():
+            assert count >= 4, f"{name} has only {count} records"
+
+    def test_the_stratum_is_metadata_and_not_redacted(self, records: list[dict]) -> None:
+        """Naming the instrument is not disclosure. It is a survey field."""
+        assert all(isinstance(r["Instrument"], str) and r["Instrument"] for r in records)
+
+
+class TestFollowUpConsent:
+    """Consent is a discrete item. Conditions on follow-up are free text.
+
+    Modelling both as one free-text box is the obvious simplification and it is
+    wrong in a way that matters: a consent item empty 44 times out of 45 is not
+    a consent item, and a respondent who says "yes but not my employer" is
+    granting something quite different from one who says nothing.
+    """
+
+    #: Conditions require permission. Anything else is a contradiction.
+    CONDITIONAL_CONSENT: ClassVar[frozenset[str]] = frozenset(
+        {"yes-not-employer", "yes-anonymous"}
+    )
+
+    def test_consent_comes_from_a_closed_set(self, records: list[dict]) -> None:
+        allowed = {"yes", "no", "yes-not-employer", "yes-anonymous"}
+        bad = [
+            r["ResponseID"]
+            for r in records
+            if r["Consent"] not in allowed
+        ]
+        assert not bad, f"unexpected consent values: {bad}"
+
+    def test_conditions_require_permission(self, records: list[dict]) -> None:
+        """Q5 is free-text conditions, so it cannot accompany a refusal."""
+        failures = [
+            r["ResponseID"]
+            for r in records
+            if r["Q5"].strip() and r["Consent"] in {"no"}
+        ]
+        assert not failures, f"conditions recorded without consent: {failures}"
+
+    def test_conditions_are_recorded_for_conditional_consent(self, records: list[dict]) -> None:
+        """If the respondent qualified their permission, that has to be in Q5."""
+        missing = [
+            r["ResponseID"]
+            for r in records
+            if r["Consent"] in self.CONDITIONAL_CONSENT and not r["Q5"].strip()
+        ]
+        assert not missing, f"conditional consent with no stated condition: {missing}"
+
+    def test_the_refusals_are_rare(self, records: list[dict]) -> None:
+        """Almost everyone who is asked agrees. A corpus of refusals would be a
+        different instrument and a different redaction problem."""
+        refusals = sum(1 for r in records if r["Consent"] == "no")
+        assert refusals < len(records) // 4, refusals
 
 
 class TestKnownGaps:
