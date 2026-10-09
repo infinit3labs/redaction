@@ -130,28 +130,47 @@ _SITE_NOUN = alt(
 #: See ``vocabulary.SERVICE_FUNCTION`` for why, and for what this costs.
 _NOT_SERVICE_FUNCTION = rf"(?!(?:{SERVICE_FUNCTION})\b)"
 
+#: Attributive adjectives and quantifiers that modify a structure noun without
+#: naming one. "the main branch", "the other team" and "the old depot" are all
+#: things anyone might write about any workplace, and redacting them deletes
+#: ordinary prose. Shared by ``named_site`` and ``department_structure`` because
+#: both rules capitalise a modifier and then read it as a name.
+#: Directional words are absent on purpose: North, South and West are real
+#: Australian place names, and a site genuinely called the North depot would
+#: then be missed. "Regional" and "Local" are absent for the opposite reason:
+#: they narrow an employer rather than describing it, so "the regional office"
+#: is employer attribution and has to keep matching.
+_GENERIC_MODIFIER = (
+    "Main", "Big", "Small", "Large", "Central", "Upper", "Lower", "Inner",
+    "Outer", "Front", "Rear", "Other", "Each", "Every", "Same", "Whole",
+    "Entire", "New", "Old",
+)
+
 #: Determiners, possessives and bare adjectives that capitalise a site *noun*
 #: without naming a site. Without this guard "My site" matched: the capital
 #: letter, one word, the optional middle words backtracking to zero, then
-#: "site" as the site noun. The adjectives were added when the held-out probe
-#: set showed "the Main branch" and "the Big store" redacting as named sites.
-#: Directional words are deliberately absent: "North", "South" and "West" are
-#: real Australian place names and a site genuinely called the North depot
-#: would be missed.
+#: "site" as the site noun.
 _NOT_A_NAME = alt(
     "My", "The", "Our", "His", "Her", "Its", "This", "That", "A", "An",
-    "Their", "Your", "Each", "Every", "New", "Old",
-    "Main", "Big", "Small", "Large", "Central", "Upper", "Lower",
-    "Inner", "Outer", "Front", "Rear",
+    "Their", "Your",
+    *_GENERIC_MODIFIER,
 )
+
+#: The same guard, case-insensitive, for the structure-noun rule. That rule
+#: compiles with IGNORECASE, so it needs the lower-case forms too.
+_NOT_A_MODIFIER_CI = alt("my", "our", "the", "his", "her", "their",
+                         *(m.lower() for m in _GENERIC_MODIFIER))
 #: Workplace events that genuinely narrow the employer and the timeframe.
 #: "restructure", "reorg", "move" and "downgrade" were removed: they are common
 #: across Australian employers and carry clinically useful causal context
-#: ("after the restructure") without identifying anybody. The ones kept are rare
-#: enough to be recognisable by a colleague.
+#: ("after the restructure") without identifying anybody.
+#: "announcement" was removed for the same reason, and it cost more than it was
+#: worth: "nothing has changed since the announcement" is a sentence anyone in
+#: any workplace can write, and redacting it deletes ordinary prose.
+#: The ones kept are rare enough to be recognisable by a colleague.
 _WORK_EVENT = alt(
     "closure", r"shut\s?down", _typo("merger"), rf"take-?{_typo('over')}",
-    _typo("announcement"), _typo("inspection"), _typo("audit"),
+    _typo("inspection"), _typo("audit"),
     _typo("investigation"), _typo("reopening"), _typo("relocation"),
     "sale", _typo("commissioning"), _typo("handover"), _typo("demolition"),
     _typo("walkout"), _typo("lockout"),
@@ -273,8 +292,12 @@ RULES: tuple[ImplicationRule, ...] = (
     ),
     _rule(
         "only_one_does",
+        # The object of the verb is part of the identifier: "the only one who
+        # does the six am start" names the duty, and cutting the span at "does"
+        # leaves "the six am start" orphaned in the redacted prose.
         r"(?P<clause>(?:the\s+)?only\s+one\s+(?:who\s+|that\s+|to\s+)?"
-    r"(?:\w+\s+){0,3}?(?:does|do|did|handles|covers|operates|runs|starts))",
+        r"(?:\w+\s+){0,3}?(?:does|do|did|handles|covers|operates|runs|starts)"
+        r"(?:\s+the\s+[\w'’-]+(?:\s+[\w'’-]+){0,2})?)",
         "claims a unique duty",
     ),
     # -- a small named group plus a shift or roster -----------------------------
@@ -397,7 +420,11 @@ RULES: tuple[ImplicationRule, ...] = (
         # Two modifiers at most. Three let the run swallow the verb in a
         # sentence like "what my manager sent the team", which redacted a whole
         # clause to label a unit that was never named.
-        rf"(?P<clause>\b(?:my|our|the|his|her)\b\s+(?:"
+        #
+        # A bare attributive modifier is blocked outright. "the main branch",
+        # "the other team" and "the old depot" describe almost any workplace
+        # and redacting them deletes ordinary prose.
+        rf"(?P<clause>\b(?:my|our|the|his|her)\b\s+(?!(?:{_NOT_A_MODIFIER_CI})\s)(?:"
         rf"(?:\w+\s+){{0,3}}?{DEPARTMENT_STRUCTURE}"
         rf"|{_NOT_SERVICE_FUNCTION}{_NOT_A_MODIFIER}(?:\w{{3,}}\s+){{1,2}}"
         rf"{DEPARTMENT_STRUCTURE_QUALIFIED})\b"

@@ -700,7 +700,41 @@ obvious fix and is not applied here: the denylist is a blunt instrument, and the
 evidence that it needs replacing rather than extending is that it is currently
 catching validated survey wording. That is a detector change with its own
 regression surface, so it belongs in its own pass with its own justification,
-not smuggled in behind a data fixture.
+not smuggled in behind a data fixture. *Superseded: `clear`, `torn`, `support`
+and `confused` were added once the held-out set made the case properly.*
+
+### Over-generic phrasing, found by probing ordinary sentences
+
+The generated corpus cannot find these, because the generator only writes the
+sentences it knows about. Probing plain English found that three rules were
+redacting sentences that identify nobody:
+
+| Text | Matched | Why it was wrong |
+| --- | --- | --- |
+| "We have support from the other team" | `the other team` | "other" is a quantifier; this describes a workplace of any size |
+| "The main branch closes early on Fridays" | `The main branch` | "main" is an attributive adjective, not a name |
+| "Nothing has changed since the announcement" | `since the announcement` | almost every workplace has an announcement to point at |
+
+`department_structure` now blocks a bare generic modifier outright, and
+`announcement` is out of `_WORK_EVENT`. Both guards were checked against real
+attribution so they could not become a general loosening — "the digital services
+branch", "the regional office", "since the merger announcement" and "since the
+depot closure" all still match. `TestOverGenericPhrasing` pins both directions.
+
+Two further probes that first looked like false positives were not:
+
+* **"the depot"** is caught by design. `vocabulary.WORKPLACE_TYPE_STRONG` says
+  so in its own docstring: a bare "the" is allowed for nouns that name a
+  workplace, because "the depot" is one and "the store" in "declined at the
+  store" is a transaction. Tightening it broke "the mine is in Western
+  Australia" and a public-sector test, and was reverted.
+* **"I am the youngest on the team"** is a genuine uniqueness claim. The
+  original defect was the span stopping at "on the" and orphaning a noun; that
+  is fixed and the whole clause is now consumed.
+
+`only_one_does` had the same span problem and got the same treatment: the object
+of the verb is part of the identifier, so "the only one who does the six am
+start" is consumed whole rather than leaving "the six am start" in the prose.
 
 The lesson worth keeping: a mock corpus is only as good as the register it is
 written in. Tidy prose hides false positives, because tidy prose is not what

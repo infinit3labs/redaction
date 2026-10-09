@@ -245,3 +245,65 @@ class TestIdempotenceInteraction:
         twice = survey.redact_record(once).text
         assert once == twice
         assert "[[" not in once
+
+class TestOverGenericPhrasing:
+    """Ordinary prose that describes almost any workplace must survive.
+
+    A rule that redacts "the other team" is not protecting anyone: the text it
+    removes carries no attribution, and losing it costs survey signal without
+    reducing risk. Each case here was a live false positive found by probing
+    ordinary sentences, not by the generated corpus.
+    """
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "We have support from the other team when we need it.",
+            "The main branch closes early on Fridays.",
+            "The big team covers the whole weekend.",
+            "The same depot does the Friday deliveries.",
+            "Nothing has changed since the announcement.",
+            "There has been no news since the announcement.",
+        ],
+    )
+    def test_generic_modifiers_and_events_are_not_identifiers(
+        self, detector: ImplicationDetector, text: str
+    ) -> None:
+        assert spans(detector, text) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "the digital services branch is under review",
+            "the enforcement directorate decided",
+            "I work in the retail branch of the council",
+            "the regional office covers Wagga",
+            "Nothing has changed since the merger announcement.",
+            "Things have been hard since the take-over.",
+            "Nothing has changed since the depot closure.",
+        ],
+    )
+    def test_real_attribution_still_matches(self, detector: ImplicationDetector, text: str) -> None:
+        """The guard must not become a general loosening."""
+        assert spans(detector, text)
+
+
+class TestSpanQuality:
+    """A uniqueness claim should be consumed whole.
+
+    Truncating at the verb leaves the identifier sitting in the output as an
+    orphaned tail, which reads as damage to the sentence rather than as a
+    deliberate redaction.
+    """
+
+    def test_the_object_of_the_verb_is_part_of_the_span(
+        self, detector: ImplicationDetector
+    ) -> None:
+        assert spans(detector, "I am the only one who does the six am start.") == [
+            "the only one who does the six am start"
+        ]
+
+    def test_the_clause_still_matches_without_an_object(
+        self, detector: ImplicationDetector
+    ) -> None:
+        assert spans(detector, "She is the only one who handles the complaints.")
