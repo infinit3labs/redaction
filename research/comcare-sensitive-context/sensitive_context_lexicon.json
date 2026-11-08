@@ -1,0 +1,342 @@
+{
+  "_comment": "Sensitivity vocabulary for Australian WHS/Comcare survey free text. Terms are literal, case-insensitive phrases. Groups are resolved by sensitive_context_rules.json; the special token @capitalised_name matches a single capitalised word (not sentence-initial) and is implemented by the scanner. Corpus counts are attestation counts over the fetched corpus (see corpus_stats.json), not prevalence in worker text.",
+  "version": "1.0",
+  "generated": "2026-10-17",
+  "provenance": "Comcare, Safe Work Australia, state/territory WHS regulators, OAIC, WHS Act 2011 (Cth); see REPORT.md section 11",
+  "handling_actions": {
+    "keep": "Do not alter the span. Detection exists only to escalate or attach context.",
+    "tokenise": "Replace with a category label (MaskStyle.LABEL), preserving the fact of disclosure.",
+    "mask": "Remove the value (MaskStyle.MASK or LABEL). Used for references and values.",
+    "generalise": "Widen to a band via generalise.py (dates, ages, tenure, team size, attributes).",
+    "label_clause": "Replace the whole identifying clause with [IMPLICATION]-style label.",
+    "escalate": "Raise risk weight and route to human review; no text change required.",
+    "restrict": "Route to restricted handling; do not include in wide exports or logs.",
+    "suppress": "Withhold verbatim; keep only a coded mention if analysis needs it."
+  },
+  "classes": {
+    "harm_behaviour": {
+      "description": "Allegations or reports of harmful behaviour. Policy words on their own are topic talk; the rule requires a person link, frequency or attribute.",
+      "handling": "label_clause",
+      "escalate": true,
+      "terms": [
+        {"term": "bullying", "aliases": ["bullied", "bully", "bullies"], "corpus_count": 207},
+        {"term": "repeated unreasonable behaviour", "aliases": ["unreasonable behaviour", "repeated behaviour"], "note": "the Comcare definition"},
+        {"term": "harassment", "aliases": ["harassed", "harassing"], "corpus_count": 254},
+        {"term": "sexual harassment", "corpus_count": 97},
+        {"term": "gender-based harassment", "aliases": ["gendered harassment"]},
+        {"term": "sexual assault", "note": "workplace sexual assault is treated separately by WorkSafe ACT"},
+        {"term": "unwelcome touching", "aliases": ["unwelcome comments", "unwelcome advances", "suggestive jokes", "repeated invitations"]},
+        {"term": "violence and aggression", "aliases": ["workplace violence", "occupational violence"], "corpus_count": 68},
+        {"term": "abused", "aliases": ["abusive", "verbal abuse"]},
+        {"term": "threatened", "aliases": ["threatening", "threats"]},
+        {"term": "assaulted", "aliases": ["physical assault"]},
+        {"term": "intimidation", "aliases": ["intimidating behaviour", "intimidated"], "corpus_count": 17},
+        {"term": "humiliation", "aliases": ["humiliated", "humiliating"], "corpus_count": 12},
+        {"term": "belittling", "aliases": ["belittled", "demeaning", "degraded", "undermined"]},
+        {"term": "unjustified criticism", "aliases": ["unfair criticism", "constructive criticism"]},
+        {"term": "offensive language", "aliases": ["offensive comments"]},
+        {"term": "excluded", "aliases": ["exclusion", "excluded from", "left out", "ostracised", "ostracized"], "corpus_count": 67, "note": "covert; often the only marker"},
+        {"term": "gossip", "aliases": ["rumours", "rumors", "backstabbing"], "corpus_count": 8},
+        {"term": "discrimination", "aliases": ["discriminatory", "discriminated against"], "corpus_count": 95},
+        {"term": "victimisation", "aliases": ["victimization", "victimised", "victimized"], "corpus_count": 6},
+        {"term": "retaliation", "aliases": ["reprisal", "retaliated"], "corpus_count": 2},
+        {"term": "conflict", "aliases": ["interpersonal conflict", "poor workplace relationships", "workplace conflict"], "corpus_count": 132},
+        {"term": "misconduct", "aliases": ["alleged misconduct"], "corpus_count": 24}
+      ]
+    },
+    "psych_health": {
+      "description": "Psychological health disclosures: conditions, symptoms, treatment and capacity. Tokenised by project design; the analytic value is the condition class, not the detail.",
+      "handling": "tokenise",
+      "escalate": true,
+      "terms": [
+        {"term": "psychological injury", "aliases": ["psych injury", "psychological injuries"], "corpus_count": 99},
+        {"term": "mental health condition", "aliases": ["mental health injury", "mental illness", "mental health issue"], "corpus_count": 248},
+        {"term": "anxiety", "aliases": ["anxious", "anxiety symptoms"], "corpus_count": 34},
+        {"term": "depression", "aliases": ["depressive symptoms", "depressive disorder", "major depressive disorder"], "corpus_count": 36},
+        {"term": "PTSD", "aliases": ["post-traumatic stress disorder"], "corpus_count": 47},
+        {"term": "adjustment disorder", "corpus_count": 7, "note": "the most common psychological primary claim in the Claims Manual examples"},
+        {"term": "burnout", "aliases": ["burnt out", "burned out", "emotionally exhausted"], "corpus_count": 22},
+        {"term": "sleep disorder", "aliases": ["insomnia", "unable to sleep", "disrupted sleep", "nightmares"], "corpus_count": 4},
+        {"term": "psychological distress", "aliases": ["distressed", "stress response"], "note": "stress alone is explicitly not an injury (Safe Work Australia)"},
+        {"term": "trauma response", "aliases": ["vicarious trauma", "cumulative trauma"], "corpus_count": 8},
+        {"term": "panic attacks", "aliases": ["panicking"]},
+        {"term": "pre-existing condition", "aliases": ["underlying condition", "pre-existing injury"], "note": "high claim relevance; health information"},
+        {"term": "flare up", "aliases": ["flare-up", "aggravation", "accelerated", "recurrence"], "note": "s5A/5B statutory concepts"},
+        {"term": "diagnosed with", "aliases": ["diagnosis", "diagnosed"]},
+        {"term": "treating doctor", "aliases": ["treating GP", "general practitioner", "treating psychiatrist", "treating psychologist", "treating practitioner", "LQMP"]},
+        {"term": "psychologist", "aliases": ["psychiatrist", "counsellor", "counselling"], "corpus_count": 114},
+        {"term": "medication", "aliases": ["antidepressant", "antidepressants", "prescribed medication"], "corpus_count": 103},
+        {"term": "medical certificate", "aliases": ["doctor's certificate", "certificate of capacity"], "corpus_count": 90},
+        {"term": "time off work", "aliases": ["signed off", "off work", "work cover leave", "stress leave"]},
+        {"term": "unfit for work", "aliases": ["unfit for duty", "not fit for work"]},
+        {"term": "fit for work", "aliases": ["fit for duty", "medically fit", "fitness for duty", "fitness for continued duty", "FCDR", "FFD"]},
+        {"term": "work restrictions", "aliases": ["restricted duties", "impairment", "functional capacity"]},
+        {"term": "capacity to work", "aliases": ["no capacity", "incapacity for work"]}
+      ]
+    },
+    "claim_status": {
+      "description": "Compensation claim and review history under the SRC Act. References and figures are masked; the status narrative is escalated.",
+      "handling": "mask",
+      "escalate": true,
+      "terms": [
+        {"term": "claim", "aliases": ["claimant", "my claim", "the claim"], "corpus_count": 2609, "note": "context required; the bare word is not sensitive"},
+        {"term": "claim number", "aliases": ["claim reference", "case number", "member number"], "note": "TestKnownGaps S027 in the repo"},
+        {"term": "liability", "aliases": ["liability accepted", "liability denied", "not liable"], "corpus_count": 448},
+        {"term": "determination", "aliases": ["determined", "delegate's determination"], "corpus_count": 337},
+        {"term": "reconsideration", "aliases": ["reconsider", "requested a reconsideration"], "corpus_count": 244},
+        {"term": "reviewable decision", "corpus_count": 100},
+        {"term": "ART", "aliases": ["Administrative Review Tribunal"], "corpus_count": 224, "note": "replaced the AAT; do not conflate"},
+        {"term": "AAT", "aliases": ["Administrative Appeals Tribunal"], "corpus_count": 17, "note": "historical matters only"},
+        {"term": "Federal Court", "aliases": ["appeal to the Federal Court"]},
+        {"term": "permanent impairment", "aliases": ["PI", "whole person impairment", "WPI"], "corpus_count": 272},
+        {"term": "normal weekly earnings", "aliases": ["NWE"], "corpus_count": 361, "note": "financially sensitive"},
+        {"term": "normal weekly hours", "aliases": ["NWH"], "corpus_count": 24},
+        {"term": "incapacity payments", "aliases": ["weekly payments", "compensation payments"], "note": "amounts and dates are identifying"},
+        {"term": "overpayment", "aliases": ["debt recovery", "repayment"]},
+        {"term": "sensitive claim", "aliases": ["NV1 claim", "sensitive rating"], "note": "Comcare handles these in a secure room; the phrase itself is a restricted-handling marker"},
+        {"term": "settlement", "aliases": ["Calderbank offer", "consent decision"], "note": "legal privileged content"},
+        {"term": "independent medical examination", "aliases": ["independent medical examiner", "IME"], "corpus_count": 34},
+        {"term": "rehabilitation program", "aliases": ["section 36 referral", "occupational rehabilitation"]},
+        {"term": "death benefits", "aliases": ["dependency claim", "fatal injury claim"]}
+      ]
+    },
+    "admin_action": {
+      "description": "Performance, discipline and conduct processes. s5A(2) SRC Act makes these decisive when combined with a psychological condition; they must never be merged with a health label.",
+      "handling": "keep",
+      "escalate": true,
+      "terms": [
+        {"term": "performance appraisal", "aliases": ["performance review", "performance assessment"], "corpus_count": 16},
+        {"term": "performance management", "aliases": ["informal performance management", "formal performance management"], "corpus_count": 16},
+        {"term": "performance improvement plan", "aliases": ["PIP", "improvement targets", "informal performance improvement targets"]},
+        {"term": "underperformance", "aliases": ["underperforming", "unsatisfactory performance", "poor performance"], "corpus_count": 11},
+        {"term": "counselling", "aliases": ["counselling action", "performance counselling"], "corpus_count": 44, "note": "counselling is also EAP vocabulary; proximity to a condition decides the sense"},
+        {"term": "disciplinary action", "aliases": ["disciplinary process", "discipline", "formal warning"], "corpus_count": 8},
+        {"term": "misconduct", "aliases": ["serious and wilful misconduct"], "corpus_count": 24},
+        {"term": "Code of Conduct investigation", "aliases": ["code of conduct", "conduct investigation", "section 15 investigation"], "corpus_count": 17},
+        {"term": "show cause", "aliases": ["show-cause", "show cause notice"]},
+        {"term": "suspension", "aliases": ["suspended from work", "suspended"]},
+        {"term": "termination", "aliases": ["dismissal", "terminated", "fired"]},
+        {"term": "redundancy", "aliases": ["redeployment", "restructure", "voluntary redundancy", "MoG change", "machinery of government"], "note": "redeployment combines with compensation history"},
+        {"term": "management action", "aliases": ["reasonable management action", "reasonable administrative action", "RAA"], "note": "the legal test phrase; escalate immediately"}
+      ]
+    },
+    "rehab_rtw": {
+      "description": "Return-to-work and rehabilitation content. Restrictions and adjustments are health information; provider and case manager references identify third parties.",
+      "handling": "tokenise",
+      "escalate": true,
+      "terms": [
+        {"term": "return to work", "aliases": ["RTW", "returning to work", "back to work"], "corpus_count": 423},
+        {"term": "rehabilitation", "aliases": ["occupational rehabilitation", "rehab"], "corpus_count": 1054},
+        {"term": "suitable duties", "aliases": ["suitable employment", "modified duties", "light duties"], "corpus_count": 136},
+        {"term": "reasonable adjustment", "aliases": ["reasonable adjustments", "workplace adjustment", "adjustments"], "corpus_count": 48},
+        {"term": "graduated return to work", "aliases": ["GRTW", "graded return", "phased return"], "corpus_count": 41},
+        {"term": "work trial", "aliases": ["work hardening", "work placement", "host employment"]},
+        {"term": "rehabilitation case manager", "aliases": ["RCM", "injury management coordinator", "return to work coordinator"], "corpus_count": 28},
+        {"term": "workplace rehabilitation provider", "aliases": ["WRP", "rehabilitation provider"], "corpus_count": 2},
+        {"term": "case conference", "aliases": ["rehabilitation case conference"]},
+        {"term": "initial needs assessment", "aliases": ["rehabilitation assessment", "functional capacity assessment"]},
+        {"term": "return to work plan", "aliases": ["RTW plan", "RTWP", "recovery at work plan"]},
+        {"term": "confidentiality of information about the employee", "note": "the scheme's own handling rule; a duty cue in regulator text"}
+      ]
+    },
+    "whs_enforcement": {
+      "description": "WHS duty, notification and enforcement vocabulary. Escalate when tied to a person, site or role: it signals legal exposure and HSR protection.",
+      "handling": "keep",
+      "escalate": true,
+      "terms": [
+        {"term": "PCBU", "aliases": ["person conducting a business or undertaking", "duty holder", "duty of care"], "corpus_count": 374},
+        {"term": "HSR", "aliases": ["health and safety representative", "safety representative"], "corpus_count": 294},
+        {"term": "HSC", "aliases": ["health and safety committee"], "corpus_count": 2},
+        {"term": "DWG", "aliases": ["designated work group"]},
+        {"term": "notifiable incident", "aliases": ["notify the regulator", "incident notification"], "corpus_count": 75},
+        {"term": "serious injury or illness", "corpus_count": 43},
+        {"term": "dangerous incident", "corpus_count": 25},
+        {"term": "site must not be disturbed", "aliases": ["prescribed reason", "do not disturb the site"]},
+        {"term": "inspector", "aliases": ["inspector's powers", "entry powers", "WHS entry permit"], "corpus_count": 130},
+        {"term": "improvement notice", "corpus_count": 73},
+        {"term": "prohibition notice", "corpus_count": 67},
+        {"term": "provisional improvement notice", "aliases": ["PIN"], "note": "HSR-issued instrument"},
+        {"term": "WHS undertaking", "aliases": ["enforceable undertaking"], "corpus_count": 76},
+        {"term": "prosecution", "aliases": ["charged", "charges", "offence", "criminal offence"], "corpus_count": 83},
+        {"term": "Category 1 offence", "aliases": ["gross negligence", "reckless conduct"], "corpus_count": 13},
+        {"term": "civil penalty", "corpus_count": 4},
+        {"term": "discriminatory conduct", "aliases": ["victimisation of an HSR", "detriment", "adverse action"], "note": "WHS Act s58-61; strict protection"},
+        {"term": "cease work", "aliases": ["stop work", "stop work authority"]},
+        {"term": "dispute resolution", "aliases": ["WHS dispute"]}
+      ]
+    },
+    "trauma_content": {
+      "description": "Exposure to traumatic events or material, including vicarious and cumulative exposure. Sensitive regardless of identity; suppress verbatim detail.",
+      "handling": "tokenise",
+      "escalate": true,
+      "terms": [
+        {"term": "traumatic events or material", "corpus_count": 43},
+        {"term": "vicarious exposure", "aliases": ["vicarious trauma", "indirect exposure"], "corpus_count": 8},
+        {"term": "cumulative trauma", "aliases": ["repeated exposure"]},
+        {"term": "deceased", "aliases": ["fatal", "fatality", "died", "death", "body", "bodies"]},
+        {"term": "suicide", "aliases": ["suicidal", "took their own life"], "corpus_count": 26},
+        {"term": "self-harm", "aliases": ["self harm", "self-inflicted", "intentionally self-inflicted"], "corpus_count": 26},
+        {"term": "child safety material", "aliases": ["child abuse", "abuse material", "exploitation material"]},
+        {"term": "crime scene", "aliases": ["autopsy", "mortuary", "post-mortem"]},
+        {"term": "disturbing images", "aliases": ["graphic material", "disturbing videos", "incident files", "case files"], "note": "reading incident files in the depot office is a held-out probe theme (H006)"}
+      ]
+    },
+    "protected_attribute": {
+      "description": "Attributes protected under discrimination law, voluntarily disclosed. Generalise when standalone; keep when it is the subject of the complaint.",
+      "handling": "generalise",
+      "escalate": false,
+      "terms": [
+        {"term": "age", "note": "only as an attribute of the complaint: 'jokes about my age'"},
+        {"term": "parental leave", "aliases": ["maternity leave", "paternity leave", "returned from leave"]},
+        {"term": "pregnant", "aliases": ["pregnancy", "breastfeeding"], "corpus_count": 229},
+        {"term": "disability", "aliases": ["disability support", "wheelchair", "neurodivergent"]},
+        {"term": "Aboriginal and Torres Strait Islander", "aliases": ["Aboriginal", "Torres Strait Islander", "Indigenous"]},
+        {"term": "CALD", "aliases": ["culturally and linguistically diverse", "migrant", "visa status", "non-English speaking"], "corpus_count": 5},
+        {"term": "LGBTIQA+", "aliases": ["LGBT", "gay", "lesbian", "bisexual", "transgender", "queer"]},
+        {"term": "religion", "aliases": ["Muslim", "Jewish", "Hindu", "Christian", "religious"]},
+        {"term": "carer responsibilities", "aliases": ["caring responsibilities", "family responsibilities"]},
+        {"term": "family and domestic violence", "aliases": ["FDV", "domestic violence", "DFV"], "corpus_count": 83, "note": "also a distinct handling class (SC-17)"}
+      ]
+    },
+    "third_party": {
+      "description": "Roles and named people other than the respondent. Name-level masking exists; the role-plus-name and role-plus-health gaps remain.",
+      "handling": "mask",
+      "escalate": true,
+      "terms": [
+        {"term": "my manager", "aliases": ["my supervisor", "my team leader", "TL", "my boss"]},
+        {"term": "my colleague", "aliases": ["my coworker", "co-worker", "one of the team"]},
+        {"term": "the caseworker", "aliases": ["my caseworker", "case manager", "claims manager", "case officer"], "note": "repo gap S043: role + name without a possessive is missed today"},
+        {"term": "the investigator", "aliases": ["the reviewer", "the delegate", "the reconsiderations officer"]},
+        {"term": "my treating doctor", "aliases": ["my GP", "my psychologist", "my psychiatrist", "my counsellor"]},
+        {"term": "the rehabilitation provider", "aliases": ["the WRP", "the RCM"]},
+        {"term": "my HSR", "aliases": ["the union rep", "union delegate", "the witness"]},
+        {"term": "the person who", "aliases": ["the person above me", "the person in charge", "a certain individual", "certain people"]},
+        {"term": "the secretary", "aliases": ["branch manager", "the director", "EL2", "SES", "the executive"], "note": "public-sector seniority markers"}
+      ]
+    },
+    "legal_advocacy": {
+      "description": "Legal and advocacy involvement. Marked for restricted handling because of privilege and litigation risk.",
+      "handling": "restrict",
+      "escalate": true,
+      "terms": [
+        {"term": "lawyer", "aliases": ["legal advice", "solicitor", "counsel", "barrister"]},
+        {"term": "union", "aliases": ["union official", "union representative"]},
+        {"term": "Fair Work Commission", "aliases": ["FWC", "general protections", "adverse action"]},
+        {"term": "Fair Work Ombudsman", "aliases": ["FWO"]},
+        {"term": "law school", "note": "negative context only; do not use"},
+        {"term": "legal professional privilege", "aliases": ["LPP", "privileged"]},
+        {"term": "freedom of information", "aliases": ["FOI request", "FOI"]},
+        {"term": "human rights", "aliases": ["human rights complaint", "AHRC", "Commission"]},
+        {"term": "worksafe investigation", "aliases": ["regulator investigation", "WHS investigation", "section 38 notice"]},
+        {"term": "proceedings", "aliases": ["hearing", "tribunal", "litigation", "claim against the employer"]}
+      ]
+    },
+    "confidentiality": {
+      "description": "Requests for anonymity or fears of reprisal. No masking satisfies these; they are the strongest human-review signal in the corpus and already weighted in risk.py.",
+      "handling": "restrict",
+      "escalate": true,
+      "terms": [
+        {"term": "anonymous", "aliases": ["not anonymous", "make this anonymous"], "corpus_count": 76},
+        {"term": "confidential", "aliases": ["confidentiality", "keep this confidential", "off the record"]},
+        {"term": "do not tell", "aliases": ["don't tell", "do not want my employer to know", "don't want my manager to find out"]},
+        {"term": "worried about being identified", "aliases": ["worried about being recognised", "scared of being identified", "fear of being identified"]},
+        {"term": "reprisal", "aliases": ["fear of reprisal", "worried about retaliation", "victimised for reporting"]},
+        {"term": "won't name names", "aliases": ["no names", "not naming names", "I won't say who"]}
+      ]
+    },
+    "surveillance": {
+      "description": "Intrusive surveillance and algorithmic management, newly regulated. When objected to personally it is the complaint; when generic it is topic talk.",
+      "handling": "keep",
+      "escalate": true,
+      "terms": [
+        {"term": "surveillance", "aliases": ["intrusive surveillance", "monitoring", "camera", "CCTV"], "corpus_count": 146},
+        {"term": "keystroke monitoring", "aliases": ["keystroke", "screen monitoring", "activity monitoring", "bossware"]},
+        {"term": "GPS tracking", "aliases": ["tracking", "location data", "tracked"]},
+        {"term": "algorithmic management", "aliases": ["algorithmic allocation", "automated decision", "metrics", "digital work systems"]},
+        {"term": "time in chair", "aliases": ["idle time", "productivity metrics", "AHT", "handle time"]}
+      ]
+    },
+    "substance": {
+      "description": "Alcohol and other drugs. Sensitive when combined with discipline, incident or a safety-critical role; the SRC Act excludes compensation in defined circumstances (s14(4)).",
+      "handling": "restrict",
+      "escalate": true,
+      "terms": [
+        {"term": "alcohol", "aliases": ["drunk", "under the influence", "intoxicated"]},
+        {"term": "drugs", "aliases": ["drug use", "substance use", "AOD", "ice", "meth"]},
+        {"term": "drug testing", "aliases": ["breath test", "drug and alcohol testing", "fitness for duty test"]},
+        {"term": "prescription medication", "aliases": ["prescribed medication", "medication for"]},
+        {"term": "rehabilitation for addiction", "aliases": ["substance rehabilitation", "detox", "treatment for addiction"]},
+        {"term": "dependency", "note": "s14(4) exclusion language; pair with causation only"}
+      ]
+    },
+    "fdv": {
+      "description": "Family and domestic violence at work. A distinct safety pathway: Comcare directs employers to call Triple Zero where there is immediate danger.",
+      "handling": "suppress",
+      "escalate": true,
+      "terms": [
+        {"term": "family and domestic violence", "aliases": ["FDV", "DFV", "domestic violence", "domestic abuse"], "corpus_count": 83},
+        {"term": "perpetrator", "aliases": ["abuser", "ex-partner", "violent partner"]},
+        {"term": "immediate danger", "aliases": ["in danger", "safety plan", "safety concerns", "threat to life"]},
+        {"term": "restraining order", "aliases": ["AVO", "protection order", "DV order"]},
+        {"term": "stalking", "aliases": ["followed home", "attended my workplace", "threats at work"]}
+      ]
+    },
+    "identity_combinator": {
+      "description": "Quasi-identifiers that narrow to a person when two or more co-occur with a narrative. WHS-specific additions beyond the repo's existing set.",
+      "handling": "generalise",
+      "escalate": true,
+      "terms": [
+        {"term": "night shift", "aliases": ["rotating roster", "rotating shift", "night work", "backfill", "4 on 4 off", "FIFO", "fly-in fly-out", "shift pattern"]},
+        {"term": "work group", "aliases": ["DWG", "designated work group", "my team of"]},
+        {"term": "APS", "aliases": ["APS 6", "EL1", "EL2", "SES", "Band 1", "Grade 4", "classification"]},
+        {"term": "graduate intake", "aliases": ["2021 intake", "graduate program", "the cohort", "intake"]},
+        {"term": "security clearance", "aliases": ["NV1", "NV2", "PV", "baseline clearance", "with clearance"]},
+        {"term": "first responder", "aliases": ["paramedic", "firefighter", "police officer", "emergency services", "frontline"]},
+        {"term": "contact centre", "aliases": ["call centre", "phone room", "the floor"]},
+        {"term": "case manager", "aliases": ["custodial officer", "caseworker", "allocator"]},
+        {"term": "depot", "aliases": ["the site", "the yard", "the branch", "the campus", "the store", "the warehouse", "the office"]},
+        {"term": "since March", "aliases": ["for 18 months", "since the restructure", "after the restructure", "last year", "when I started"]}
+      ]
+    }
+  },
+  "groups": {
+    "_comment": "Values are literal case-insensitive phrases; the scanner compiles them with word boundaries. @capitalised_name is special.",
+    "psych_condition": ["anxiety", "anxious", "depression", "depressive", "ptsd", "post-traumatic stress", "adjustment disorder", "burnout", "burnt out", "stress", "stressed", "distress", "distressed", "panic", "panicking", "mental health", "psychological injury", "psychological harm", "mental illness", "not coping", "unable to sleep", "insomnia", "trauma", "vicarious trauma", "emotional exhaustion", "psychological distress"],
+    "causal_marker": ["because of", "due to", "caused by", "as a result of", "after the", "since the", "resulted from", "triggered by", "aggravated by", "worsened by", "made my", "made it worse", "contributed to", "from the", "brought on"],
+    "first_person": ["i ", "i'm", "i am", "i was", "i have", "i've", "my ", "we ", "our ", "me ", "us "],
+    "employment_link": ["at work", "from work", "with work", "work has", "work made", "the workplace", "my job", "my manager", "my supervisor", "my team", "the restructure", "the workload", "the shift", "on shift", "the roster", "the office", "the depot"],
+    "admin_action": ["performance appraisal", "performance review", "performance management", "performance improvement", "performance plan", "pip", "underperformance", "underperforming", "unsatisfactory performance", "poor performance", "counselling", "disciplinary action", "disciplinary process", "discipline", "misconduct", "code of conduct", "conduct investigation", "show cause", "suspension", "suspended", "termination", "terminated", "dismissal", "dismissed", "redundancy", "redundant", "redeployment", "redeployed", "reasonable administrative action", "reasonable management action", "management action", "informal performance", "formal warning", "warning letter"],
+    "harm_behaviour": ["bullying", "bullied", "bully", "harassment", "harassed", "harassing", "sexual harassment", "sexual assault", "violence and aggression", "workplace violence", "abused", "abusive", "threatened", "threatening", "threats", "assaulted", "intimidation", "intimidating", "intimidated", "humiliation", "humiliated", "humiliating", "belittled", "belittling", "demeaning", "degraded", "undermined", "unjustified criticism", "offensive language", "offensive comments", "excluded", "exclusion", "left out", "ostracised", "gossip", "rumours", "rumors", "backstabbing", "discrimination", "discriminatory", "discriminated against", "victimisation", "victimised", "retaliation", "reprisal", "conflict", "misconduct", "unreasonable behaviour", "repeated behaviour", "picks on", "picked on", "targeted", "targeting", "aggressive", "aggression"],
+    "harm_behaviour_soft": ["comments", "jokes", "teasing", "ridicule", "slurs", "slur", "stereotyping", "does this", "does it again", "keeps doing it", "spiteful", "nasty", "rude", "ignores me", "singled out", "nitpicking", "micromanaging"],
+    "third_party_role": ["my caseworker", "caseworker", "my case manager", "case manager", "claims manager", "the investigator", "the delegate", "my manager", "my supervisor", "team leader", "my colleague", "coworker", "co-worker", "the rehabilitation provider", "the wrp", "the rcm", "my doctor", "my gp", "my psychologist", "my psychiatrist", "the hsr", "the union rep", "the witness"],
+    "third_party_subject": ["the employee", "the worker", "the staff member", "that employee", "another worker", "a colleague", "a co-worker", "a coworker"],
+    "person_marker": ["my manager", "my supervisor", "my team leader", "my boss", "my colleague", "my coworker", "my co-worker", "he ", "she ", "they ", "towards me", "at me", "against me", "in front of", "the manager", "the supervisor", "my tl", "the person", "someone ", "a colleague"],
+    "protected_attribute": ["age", "parental leave", "maternity leave", "paternity leave", "pregnant", "pregnancy", "breastfeeding", "disability", "disabled", "wheelchair", "neurodivergent", "aboriginal", "torres strait", "indigenous", "cald", "migrant", "visa", "lgbt", "lgbtiqa", "gay", "lesbian", "bisexual", "transgender", "queer", "religion", "religious", "muslim", "jewish", "hindu", "christian", "carer responsibilities", "caring responsibilities", "family responsibilities", "family and domestic violence", "fdv", "domestic violence", "woman", "man", "women", "men", "female", "male", "bloke", "younger worker", "older worker"],
+    "frequency_marker": ["every shift", "every day", "every week", "every single week", "every single day", "every single shift", "each shift", "each week", "every time", "all the time", "repeatedly", "repeated", "again and again", "constantly", "ongoing", "for months", "for weeks", "for years", "since march", "since last year", "keeps doing", "kept doing", "does this", "does it again", "always does", "never stops", "over and over", "most shifts", "most days"],
+    "claim_marker": ["my claim", "the claim", "claim number", "claim reference", "claim for compensation", "compensation claim", "lodged a claim", "claim was", "claim is", "claim has been", "workers compensation", "workers' compensation", "comcare claim", "liability", "accepted liability", "denied liability", "determination", "reconsideration", "reviewable decision", "art", "administrative review tribunal", "aat", "permanent impairment", "wpi", "normal weekly earnings", "nwe", "incapacity payments", "settlement", "overpayment"],
+    "claim_decision": ["accepted", "denied", "rejected", "affirmed", "varied", "set aside", "determined", "in my favour", "not liable", "liable", "closed", "ceased", "suspended", "reduced", "recovered", "under review", "being reviewed", "will be reviewed", "would be reviewed", "reviewed", "pending"],
+    "capacity_restriction": ["no capacity", "unfit for work", "unfit for duty", "fit for work with restrictions", "restricted duties", "suitable duties", "light duties", "modified duties", "reasonable adjustment", "adjustments", "cannot lift", "cannot sit", "cannot travel", "reduced hours", "graduated return", "work restrictions", "permanent impairment", "impairment", "incapacity"],
+    "substance": ["alcohol", "drunk", "under the influence", "intoxicated", "drugs", "drug use", "substance use", "aod", "drug testing", "breath test", "drug and alcohol", "dependency", "addiction", "detox", "drinking", "cannabis", "meth", "opioid"],
+    "consequence": ["disciplinary", "discipline", "misconduct", "code of conduct", "suspended", "terminated", "dismissed", "final warning", "stood down", "investigation", "safety critical", "operator", "driver", "pilot", "nurse", "forklift", "machinery", "shift", "incident", "near miss", "notifiable"],
+    "self_harm": ["suicide", "suicidal", "took their own life", "self-harm", "self harm", "self-inflicted", "intentionally self-inflicted", "kill myself", "end my life", "overdose"],
+    "trauma_material": ["traumatic events", "traumatic material", "deceased", "fatal", "fatality", "died", "death", "body", "bodies", "autopsy", "mortuary", "post-mortem", "crime scene", "child safety", "child abuse", "abuse material", "disturbing images", "graphic material", "disturbing videos", "incident files", "case files", "vicarious exposure", "cumulative trauma"],
+    "exposure_verb": ["reading", "read", "viewing", "watched", "watching", "investigating", "investigated", "reviewing", "reviewed", "handling", "dealing with", "responding to", "attended", "witnessing", "witnessed", "saw", "heard"],
+    "surveillance": ["surveillance", "monitoring", "camera", "cctv", "keystroke", "keystrokes", "screen monitoring", "activity monitoring", "bossware", "gps tracking", "tracked", "tracking", "location data", "algorithmic management", "automated", "metrics", "targets", "time in chair", "idle time", "handle time", "productivity system"]
+    ,
+    "surveillance_objection": ["without consent", "without my knowledge", "unreasonable", "did not agree", "never agreed", "no privacy", "watching me", "tracking me", "monitoring me", "spying", "excessive", "micromanage", "micromanaged", "micromanagement"],
+    "uniqueness": ["the only", "only one", "one of two", "one of three", "one of four", "one of five", "no one else", "nobody else", "the sole", "the youngest", "the oldest", "first woman", "first man", "only woman", "only man", "last one left", "the two of us", "there are two of us", "there are only two"],
+    "identity_combinator": ["night shift", "rotating roster", "rotating shift", "night work", "backfill", "4 on 4 off", "fifo", "fly-in fly-out", "work group", "dwg", "designated work group", "aps ", "aps6", "el1", "el2", "ses", "band 1", "band 2", "band 3", "grade 4", "classification", "graduate intake", "graduate program", "intake", "cohort", "security clearance", "nv1", "nv2", "pv", "baseline clearance", "first responder", "paramedic", "firefighter", "police officer", "emergency services", "frontline", "contact centre", "call centre", "case manager", "caseworker", "custodial officer", "allocator", "depot", "the site", "the yard", "the branch", "the campus", "the store", "the warehouse", "the office", "tenure", "years of service"],
+    "event": ["restructure", "reorganisation", "reorganization", "reorg", "merger", "takeover", "shutdown", "closure", "closed", "relocation", "reopened", "inspection", "audit", "investigation", "incident", "accident", "fatality", "redundancy", "machinery of government", "royal commission", "review"],
+    "confidentiality": ["anonymous", "confidential", "confidentiality", "off the record", "do not tell", "don't tell", "do not want my employer to know", "don't want my manager to find out", "worried about being identified", "worried about being recognised", "scared of being identified", "fear of reprisal", "worried about retaliation", "victimised for reporting", "won't name names", "no names", "not naming names", "keep this between us", "i won't say who"],
+    "enforcement": ["notifiable incident", "notify the regulator", "incident notification", "serious injury or illness", "dangerous incident", "inspector", "improvement notice", "prohibition notice", "provisional improvement notice", "whs undertaking", "enforceable undertaking", "prosecution", "charged", "charges", "category 1 offence", "gross negligence", "civil penalty", "discriminatory conduct", "adverse action", "cease work", "stop work", "hsr", "health and safety representative", "entry permit", "regulator", "worksafe", "safework"],
+    "fdv": ["family and domestic violence", "fdv", "dfv", "domestic violence", "domestic abuse", "perpetrator", "abuser", "ex-partner", "violent partner", "restraining order", "avo", "protection order", "stalking", "followed home", "threats at work"],
+    "danger": ["immediate danger", "in danger", "safety plan", "safety concerns", "threat to life", "fear for my safety", "scared for my safety", "unsafe at home", "violent"],
+    "quote_frame": ["he said", "she said", "they said", "he told me", "she told me", "they told me", "said to me", "texted me", "emailed me", "wrote to me", "yelled", "shouted", "screamed", "called me"],
+    "slur_threat": ["stupid", "idiot", "moron", "useless", "worthless", "pathetic", "slut", "whore", "bitch", "cunt", "faggot", "retard", "kill you", "hurt you", "watch your back", "you'll regret", "shut up"],
+    "reasonable_adjustment": ["reasonable adjustment", "reasonable adjustments", "adjustments", "workplace adjustment", "accommodation", "modified duties", "flexible work", "flexible working arrangement", "part-time hours", "reduced hours"],
+    "denial": ["denied", "refused", "rejected", "not provided", "declined", "wouldn't allow", "would not allow", "not approved", "knocked back", "ignored"],
+    "business_as_usual_guards": ["code of practice", "model code", "the model whs", "policy", "procedure", "training", "guidance", "regulatory guide", "fact sheet", "research", "survey", "audit report", "case study", "example", "toolkit", "information sheet", "employers and managers", "information seekers", "was the content", "share this page", "skip to main content"],
+    "service_context_guards": ["service is excluded", "excluded from cover", "pre-existing condition", "policy exclusion", "claim is excluded", "not covered", "exclusion period", "reimbursement", "invoice", "gap payment", "premium"],
+    "negation_guards": ["not stressed", "never felt", "no concerns", "no issues", "nothing happened", "never experienced", "not bullied", "was not harassed", "did not feel", "doesn't affect", "does not affect", "no impact", "well managed", "handled well", "no complaint"]
+  }
+}

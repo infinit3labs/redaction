@@ -1,0 +1,341 @@
+{
+  "_comment": "Context-sensitive rules for detecting compositional sensitivity in Australian WHS/Comcare text. all_of is an array of arrays: outer elements are AND-ed, each inner element is an OR of group names from sensitive_context_lexicon.json. Proximity is one of 'sentence', 'clause' (~40 words), 'paragraph' (~240 words). Actions are defined in the lexicon file. The regex field is a review-ready snippet in the style of pii_redact.detectors.implication for integration; structured groups remain the source of truth for this scanner.",
+  "version": "1.0",
+  "generated": "2026-10-17",
+  "rules": [
+    {
+      "id": "SC-01",
+      "name": "Condition caused by work",
+      "class": "psych_health",
+      "all_of": [["psych_condition"], ["causal_marker", "employment_link"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards", "negation_guards"],
+      "action": ["escalate", "tokenise"],
+      "risk_weight": 0.18,
+      "why": "A first-person condition attributed to work is both health information and the s5B 'employment contributed to a significant degree' question. Topic pages describe conditions generically and must not fire; the causal marker plus first person is what makes it a disclosure.",
+      "evidence": [
+        "comcare aggravation guidance: 'the employee has experienced a worsening of their depressive symptoms because of the confrontation with an aggressive customer and that they require time off work, an increase in antidepressant medication'",
+        "safeworkaustralia.gov.au model Code: 'Workers exposed to a hazard over a prolonged period or in a severe way can cause psychological and physical harm'"
+      ],
+      "regex": "(?i)(?P<clause>(?:i|we)\\b[^.?!]{0,60}(?:anxiety|depression|ptsd|stress|distress|burnout|not coping)[^.?!]{0,40}(?:because of|due to|caused by|after|since|from))"
+    },
+    {
+      "id": "SC-02",
+      "name": "Reasonable administrative action fact pattern",
+      "class": "admin_action",
+      "all_of": [["admin_action"], ["psych_condition"], ["causal_marker", "employment_link", "first_person"]],
+      "proximity": "paragraph",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "restrict"],
+      "risk_weight": 0.30,
+      "why": "s5A(2) SRC Act excludes compensation where the injury results from reasonable administrative action taken reasonably: performance appraisal, counselling, suspension, disciplinary action and anything connected with them. The same sentence that describes a worker's distress also describes the employer's defence, and the record must reach human review before any release.",
+      "evidence": [
+        "comcare claims manual: 'compensation is not payable if the injury is as a result of Reasonable Administrative Action (RAA) undertaken in a reasonable manner... (a) a reasonable appraisal of the employee's performance (b) a reasonable counselling action (whether formal or informal)'",
+        "comcare claims manual example 4: 'a claim for an adjustment disorder caused by their supervisor providing constructive feedback on overall performance... constituted reasonable administrative action (informal performance management)'"
+      ],
+      "regex": "(?i)(?P<clause>(?:performance (?:appraisal|review|management|improvement)|counselling|disciplinary|misconduct|suspension|underperformance)[^.?!]{0,120}(?:anxiety|depression|stress|distress|ptsd|adjustment disorder|mental health))"
+    },
+    {
+      "id": "SC-03",
+      "name": "Behaviour directed at a person",
+      "class": "harm_behaviour",
+      "all_of": [["harm_behaviour", "harm_behaviour_soft"], ["person_marker", "first_person"]],
+      "proximity": "clause",
+      "guards": ["business_as_usual_guards", "negation_guards", "service_context_guards"],
+      "action": ["escalate", "label_clause"],
+      "risk_weight": 0.22,
+      "why": "The identifying content is the clause, not the object: 'he does this to me every shift' names no one and identifies one person to anyone inside the team. Matches the repo's implication design (whole clause, label rather than delete).",
+      "evidence": [
+        "comcare bullying page: 'Bullying is repeated, unreasonable behaviour directed towards a worker or group of workers, that creates a risk to health and safety.'",
+        "held-out probe H017: 'There is repeated criticism in front of the bay, teasing about where I trained, and I get excluded from the group chat when the roster is done.'"
+      ],
+      "regex": "(?i)(?P<clause>(?:my (?:manager|supervisor|team leader)|he|she|they)\\b[^.?!]{0,60}(?:bullying|bullied|harassment|harassed|humiliat\\w+|undermin\\w+|excluded|threat\\w+|intimidat\\w+|belittl\\w+|gossip))|(?P<clause2>(?:bullying|harassment|humiliat\\w+|threat\\w+|intimidat\\w+)[^.?!]{0,40}(?:towards me|at me|against me|in front of))"
+    },
+    {
+      "id": "SC-04",
+      "name": "Attribute-based harassment",
+      "class": "harm_behaviour",
+      "all_of": [["harm_behaviour", "harm_behaviour_soft"], ["protected_attribute"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards", "negation_guards", "service_context_guards"],
+      "action": ["escalate", "generalise"],
+      "risk_weight": 0.20,
+      "why": "Harassment based on a protected attribute is the discrimination disclosure the survey exists to surface, and the attribute is what a colleague uses to identify the respondent. Generalise the attribute only when it is not the subject of the complaint; when it is, keep it and escalate.",
+      "evidence": [
+        "held-out probe H019: 'I get comments and jokes about my age every single week. It started when I came back from parental leave.'",
+        "comcare harassment page: 'Harassment is harmful behaviour towards a person that creates a risk to health and safety and is based on personal characteristics.'"
+      ],
+      "regex": "(?i)(?P<clause>(?:bullying|harassment|jokes?|comments?|teasing|excluded|discriminat\\w+)[^.?!]{0,60}(?:age|gender|sex|pregnan\\w+|parental leave|disab\\w+|race|religio\\w+|sexuality|visa|culture))"
+    },
+    {
+      "id": "SC-05",
+      "name": "Repeated behaviour against a person",
+      "class": "harm_behaviour",
+      "all_of": [["harm_behaviour", "harm_behaviour_soft"], ["frequency_marker"], ["person_marker", "first_person"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards", "negation_guards", "service_context_guards"],
+      "action": ["escalate", "label_clause"],
+      "risk_weight": 0.20,
+      "why": "Repetition is part of the statutory bullying definition and the strongest predictor of an identifiable incident history. 'Every shift' plus a behaviour plus a person is a person-specific timeline.",
+      "evidence": [
+        "comcare bullying page: 'repeated, unreasonable behaviour directed towards a worker'",
+        "comcare harassment page on unwelcome conduct: 'repeated invitations to go on dates'"
+      ],
+      "regex": "(?i)(?P<clause>(?:every (?:shift|day|week)|each (?:shift|week)|repeatedly|again and again|for months|constantly)[^.?!]{0,80}(?:bullying|harassment|comments?|jokes?|excluded|criticism|threats?|gossip))"
+    },
+    {
+      "id": "SC-06",
+      "name": "Claim-linked health information",
+      "class": "claim_status",
+      "all_of": [["claim_marker"], ["psych_condition", "capacity_restriction"], ["first_person", "claim_marker"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "mask", "tokenise"],
+      "risk_weight": 0.25,
+      "why": "A claim reference or determination plus a condition produces the most identifying combination in the corpus short of a name: the reference is unique, the condition is health information, and the pairing tells anyone with file access who the person is. Claim references are the repo's documented gap S027.",
+      "evidence": [
+        "comcare claims page: 'You will need to attach: a medical certificate, an employee statement - only if your claim is for a psychological injury or complex condition'",
+        "repo TestKnownGaps S027: member and claim numbers are not covered today"
+      ],
+      "regex": "(?i)(?P<clause>(?:my claim|claim (?:number|reference)|comcare claim|workers compensation)[^.?!]{0,60}(?:anxiety|depression|ptsd|adjustment disorder|psychological injury|incapacity|stress|mental health))"
+    },
+    {
+      "id": "SC-07",
+      "name": "Case history disclosure",
+      "class": "claim_status",
+      "all_of": [["claim_marker"], ["claim_decision"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "mask"],
+      "risk_weight": 0.22,
+      "why": "Liability decisions, reconsiderations and ART applications are the case history. Combined with any first person they identify the matter and reveal legally privileged reasoning. Mask references and dates; keep the status narrative for analysis.",
+      "evidence": [
+        "comcare reconsideration page: 'affirm the decision... vary the decision... set aside the decision'",
+        "comcare claims manual glossary: 'Reconsideration... may ask for a reconsideration of a determination'"
+      ],
+      "regex": "(?i)(?P<clause>(?:liability|determination|reconsideration|art|administrative review tribunal|permanent impairment|nwe|normal weekly earnings)[^.?!]{0,60}(?:accepted|denied|rejected|affirmed|varied|set aside|closed|ceased))"
+    },
+    {
+      "id": "SC-08",
+      "name": "Third-party capacity or restriction",
+      "class": "rehab_rtw",
+      "all_of": [["capacity_restriction"], ["person_marker", "@capitalised_name", "third_party_subject"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "tokenise", "mask"],
+      "risk_weight": 0.20,
+      "why": "Restrictions are health information about a person, and when attached to a role or name they become someone else's medical record inside free text. The scheme itself requires confidentiality of information about the employee.",
+      "evidence": [
+        "comcare claims manual: rehabilitation arrangements include 'negotiating medically suitable return to work options such as graduated return to work, work hardening, work trials' and 'ensuring the confidentiality of information about the employee'"
+      ],
+      "regex": "(?i)(?P<clause>(?:fit for work with restrictions|restricted duties|suitable duties|light duties|reasonable adjustments?|reduced hours|cannot lift|cannot sit)[^.?!]{0,80}(?:the employee|my manager|my colleague|my son|my daughter|@name))"
+    },
+    {
+      "id": "SC-09",
+      "name": "Substance and consequence",
+      "class": "substance",
+      "all_of": [["substance"], ["consequence", "admin_action"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards", "negation_guards"],
+      "action": ["escalate", "restrict"],
+      "risk_weight": 0.25,
+      "why": "The SRC Act excludes compensation for injuries caused by serious and wilful misconduct or while under the influence of alcohol or a drug (s14), and drug testing/fitness-for-duty content names people in safety-critical roles. AOD content must never be merged with a health label.",
+      "evidence": [
+        "comcare claims manual: 'Compensation is not payable to an employee if the injury is... caused by serious and wilful misconduct... under the influence of alcohol or a drug (other than a drug prescribed...)'"
+      ],
+      "regex": "(?i)(?P<clause>(?:alcohol|drugs?|intoxicated|under the influence|drug testing|breath test)[^.?!]{0,80}(?:misconduct|disciplinary|suspended|terminated|incident|near miss|shift|operating|driving))"
+    },
+    {
+      "id": "SC-10",
+      "name": "Self-harm content",
+      "class": "trauma_content",
+      "all_of": [["self_harm"]],
+      "proximity": "sentence",
+      "guards": [],
+      "action": ["suppress", "escalate", "restrict"],
+      "risk_weight": 0.40,
+      "why": "Never echo verbatim. The Act's exclusion for intentionally self-inflicted injury makes this legally consequential as well as harmful; route to a specialist reviewer and keep only a coded mention if the analysis requires one.",
+      "evidence": [
+        "comcare claims manual: 'Intentionally self-inflicted... an employee cannot be paid compensation in respect of an injury that they deliberately inflicted on themselves'"
+      ],
+      "regex": "(?i)(?P<clause>\\b(?:suicide|suicidal|self-harm|self harm|self-inflicted|intentionally self-inflicted|end my life|kill myself)\\b)"
+    },
+    {
+      "id": "SC-11",
+      "name": "Traumatic material exposure",
+      "class": "trauma_content",
+      "all_of": [["trauma_material"], ["exposure_verb"], ["first_person", "person_marker"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "tokenise", "suppress"],
+      "risk_weight": 0.25,
+      "why": "Vicarious and cumulative exposure is a defined hazard and the detail is the harmful content. Keep the exposure class, drop the graphic specifics, and identify the role only where the role itself is the complaint.",
+      "evidence": [
+        "comcare traumatic events page: 'Witnessing, investigating or being directly exposed to traumatic events or material is a workplace psychosocial hazard... includes vicarious exposure... and cumulative trauma'",
+        "held-out probe H006: 'Reading the incident files in the depot office has left me distressed and unable to sleep.'"
+      ],
+      "regex": "(?i)(?P<clause>(?:reading|viewing|investigating|reviewing|witnessing|handling)[^.?!]{0,60}(?:traumatic|incident files?|case files?|deceased|fatality|autopsy|abuse material|disturbing images?))"
+    },
+    {
+      "id": "SC-12",
+      "name": "Surveillance objection",
+      "class": "surveillance",
+      "all_of": [["surveillance"], ["surveillance_objection", "first_person"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["keep", "escalate"],
+      "risk_weight": 0.15,
+      "why": "Intrusive surveillance is a regulated psychosocial hazard (model WHS Regulations). Objection language marks a personal complaint rather than a policy description; where a person or team is named, escalate as an identifying clause.",
+      "evidence": [
+        "comcare intrusive surveillance page: 'Intrusive surveillance refers to the use of unreasonable surveillance methods or tools used to monitor and collect information about workers at work'",
+        "safeworkaustralia.gov.au glossary: digital work systems, algorithmic management, work intensity, electronic monitoring"
+      ],
+      "regex": "(?i)(?P<clause>(?:monitoring|surveillance|tracking|keystrokes|me watching|watching me)[^.?!]{0,60}(?:without (?:my|our) consent|without my knowledge|never agreed|no privacy|unreasonable|micromanag\\w+))"
+    },
+    {
+      "id": "SC-13",
+      "name": "Protected attribute uniqueness",
+      "class": "protected_attribute",
+      "all_of": [["protected_attribute"], ["uniqueness"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "generalise"],
+      "risk_weight": 0.22,
+      "why": "The repo's unique-attribute rule plus a protected attribute is near-certain identification in a small team: 'the only woman on the night shift' is a person. Attribute alone is ordinary; uniqueness alone is weak; together they identify.",
+      "evidence": [
+        "repo risk.py: protected characteristics in a bullying survey are often the subject of the complaint, which makes them identifying",
+        "held-out probe H002 secret: 'the only bloke on the team'"
+      ],
+      "regex": "(?i)(?P<clause>(?:the only|only one|no one else|nobody else|the youngest|the oldest|first (?:woman|man)|last one left)[^.?!]{0,40}(?:woman|man|person|casual|temp|migrant|indigenous|apprentice|parent|graduate|disabled|pregnan\\w+|older|younger|bloke|female|male))"
+    },
+    {
+      "id": "SC-14",
+      "name": "Quasi-identifier accumulation",
+      "class": "identity_combinator",
+      "all_of": [["identity_combinator"], ["identity_combinator"], ["event", "psych_condition", "uniqueness", "third_party_subject"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "generalise"],
+      "risk_weight": 0.20,
+      "why": "Two or more identity combinators (shift, site, level, cohort, clearance, tenure) plus an event or condition is the quasi-combination the repo already scores for generic attributes. This rule extends the combinator set with WHS-specific ones a generic model does not know.",
+      "evidence": [
+        "repo README: 'Grade 4, night shift, team of five, 18 years of service and one unusual injury is a person'",
+        "comcare hostile example structure: 'one of three EL2s in the Migration directorate'"
+      ],
+      "regex": "(?i)(?P<clause>(?:(?:night shift|rotating roster|fifo|depot|warehouse|head office|contact centre|first responder|nv1|nv2|aps \\d|el[12]|grade \\d|graduate intake|years of service)\\b[^.?!]{0,80}){2,})"
+    },
+    {
+      "id": "SC-15",
+      "name": "Confidentiality request with a named role",
+      "class": "confidentiality",
+      "all_of": [["confidentiality"], ["person_marker", "identity_combinator"]],
+      "proximity": "sentence",
+      "guards": [],
+      "action": ["escalate", "restrict"],
+      "risk_weight": 0.35,
+      "why": "The repo already treats a confidentiality request as evidence that the response identifies the writer... no masking satisfies it, and combining it with a named role or site tells the reviewer where the exposure sits. It belongs at the top of the triage queue, not in the redaction pass.",
+      "evidence": [
+        "repo README: 'A confidentiality request... the respondent is telling you the response identifies them... no amount of masking addresses it'",
+        "comcare psychosocial case studies: 'Hazard reports' with concerns about being identified"
+      ],
+      "regex": "(?i)(?P<clause>(?:anonymous|confidential|do not tell|don't tell|worried about being identified|fear of reprisal)[^.?!]{0,80}(?:my manager|my supervisor|my team|the depot|night shift|my branch|my unit))"
+    },
+    {
+      "id": "SC-16",
+      "name": "Enforcement exposure with a person or site",
+      "class": "whs_enforcement",
+      "all_of": [["enforcement"], ["person_marker", "identity_combinator", "first_person"]],
+      "proximity": "paragraph",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "mask"],
+      "risk_weight": 0.22,
+      "why": "Regulator involvement plus a site, role or person is a liability signal and can reveal protected HSR activity (WHS Act s58-61). Mask names and site names; keep the enforcement narrative for the reviewer.",
+      "evidence": [
+        "comcare news: 'charges over psychosocial risks'",
+        "comcare regulatory guide: right of entry, improvement and prohibition notices, WHS undertakings"
+      ],
+      "regex": "(?i)(?P<clause>(?:comcare|worksafe|safework|inspector|improvement notice|prohibition notice|prosecution|charged|whs undertaking|notifiable incident)[^.?!]{0,80}(?:my (?:manager|supervisor|team|team leader|hsr)|the (?:depot|site|branch|store)|our (?:workplace|office)))"
+    },
+    {
+      "id": "SC-17",
+      "name": "Family and domestic violence disclosure",
+      "class": "fdv",
+      "all_of": [["fdv"]],
+      "proximity": "paragraph",
+      "guards": ["business_as_usual_guards"],
+      "action": ["suppress", "escalate", "restrict"],
+      "risk_weight": 0.40,
+      "why": "FDV at work is a distinct safety pathway with immediate-danger escalation. Never echo the detail; suppress verbatim, keep a coded marker, and follow the safety route rather than the ordinary review queue.",
+      "evidence": [
+        "comcare regulatory guide FDV: 'Call Triple Zero (000) If you are an employer and believe a worker in the workplace is in immediate danger of family and domestic violence'",
+        "comcare regulatory guide FDV: 'FDV can become a work health and safety issue if the perpetrator of FDV makes threats, intimidates or carries out violence... at the workplace, including if working from home'"
+      ],
+      "regex": "(?i)(?P<clause>(?:family and domestic violence|fdv|dfv|domestic violence|perpetrator|ex-partner|restraining order|avo)\\b)"
+    },
+    {
+      "id": "SC-18",
+      "name": "Quoted abuse or threat",
+      "class": "harm_behaviour",
+      "all_of": [["quote_frame"], ["slur_threat"], ["person_marker", "first_person"]],
+      "proximity": "clause",
+      "guards": ["business_as_usual_guards", "service_context_guards"],
+      "action": ["escalate", "label_clause", "suppress"],
+      "risk_weight": 0.22,
+      "why": "A verbatim quote carries the offensive content itself, attributed to a person. It passes a keyword scan when the slur is misspelled or euphemised, and it must not be reproduced in wide outputs even after names are removed.",
+      "evidence": [
+        "comcare bullying page examples: 'offensive language, intimidating behaviour, belittling comments'",
+        "held-out probe H003: 'It was discrimination dressed up as feedback.'"
+      ],
+      "regex": "(?i)(?P<clause>(?:he|she|they)\\s(?:said|told me|yelled|shouted|screamed|texted|emailed)[^.?!]{0,60}(?:\\b(?:stupid|idiot|useless|worthless|pathetic|kill you|hurt you|shut up)\\b))"
+    },
+    {
+      "id": "SC-19",
+      "name": "Performance and condition about a named worker",
+      "class": "admin_action",
+      "all_of": [["admin_action"], ["psych_condition"], ["@capitalised_name", "third_party_subject"]],
+      "proximity": "paragraph",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "mask", "tokenise"],
+      "risk_weight": 0.25,
+      "why": "When the sentence is about a third party rather than the respondent, it is someone else's health and performance record inside survey free text. The name must not be merged with the respondent's, and the condition must not be attributed to the respondent.",
+      "evidence": [
+        "comcare FCDR glossary: 'a report obtained under the Public Service Act 1999 generally in relation to non-compensable issues'",
+        "comcare psychological injury and performance factsheet: 'Sometimes performance is not at the usual standard when a person is unwell... A decline in performance can be an early warning sign'"
+      ],
+      "regex": "(?i)(?P<clause>(?:his|her|their)\\s(?:performance|conduct|behaviour)[^.?!]{0,60}(?:anxiety|depression|stress|ptsd|mental health|adjustment disorder))"
+    },
+    {
+      "id": "SC-20",
+      "name": "Adjustment denied or refused",
+      "class": "rehab_rtw",
+      "all_of": [["reasonable_adjustment"], ["psych_condition", "capacity_restriction"], ["denial"]],
+      "proximity": "sentence",
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate"],
+      "risk_weight": 0.20,
+      "why": "A request for adjustment, a condition, and a refusal is a discrimination-risk disclosure as well as a health disclosure. The combination, not the words, is the legal fact; keep the narrative and escalate.",
+      "evidence": [
+        "comcare reasonable adjustments page: 'Workplaces have an obligation to make reasonable adjustments'",
+        "comcare psychological injury and performance factsheet: 'People with chronic conditions... sometimes need time away from work to manage their health condition'"
+      ],
+      "regex": "(?i)(?P<clause>(?:adjustments?|flexible work|modified duties|reduced hours)[^.?!]{0,80}(?:denied|refused|rejected|declined|not approved|knocked back|ignored))"
+    },
+    {
+      "id": "SC-21",
+      "name": "Third-party role plus name",
+      "class": "third_party",
+      "all_of": [["third_party_role"], ["@capitalised_name"]],
+      "proximity": "clause",
+      "max_words_between": 6,
+      "guards": ["business_as_usual_guards"],
+      "action": ["escalate", "mask"],
+      "risk_weight": 0.20,
+      "why": "The repo's documented free-text name gap (S043): 'my caseworker was [Name]' is neither a possessive nor an honorific, so the role-plus-name rule misses it. This rule closes it by requiring a role and a capitalised token in the same clause, which is narrower than name detection and safer than none.",
+      "evidence": [
+        "repo README TestKnownGaps S043: 'A third party named without a label... my caseworker was <Name> is neither a possessive nor an honorific'",
+        "comcare claims page names the roles that appear in worker text: claims manager, senior injury manager, rehabilitation case manager"
+      ],
+      "regex": "(?i)(?P<clause>(?:my caseworker|my case manager|claims manager|the investigator|the delegate|my manager|my supervisor|my psychologist|my doctor)\\s+(?:is|was|named|called)?\\s*(?P<name>(?-i:[A-Z])[A-Za-z'’-]+))"
+    }
+  ]
+}
