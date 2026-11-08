@@ -1,0 +1,28 @@
+name: deploy
+
+# Tells deployhub to deploy this app to greenfrog. The heavy lifting happens in
+# infinit3labs/deployhub, which owns the single self-hosted runner.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask deployhub to deploy redaction
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.DEPLOY_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'infinit3labs',
+              repo: 'deployhub',
+              event_type: 'deploy',
+              client_payload: { app: 'redaction', sha: context.sha },
+            });
